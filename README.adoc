@@ -43,6 +43,6 @@ docker compose up
 
 Once the Spring application is running (look for message `com.redis.demo.spring.ai.Application: Started Application in ...`) point your browser to link:http://localhost:8080[localhost:8080] and ask a question around beers:
 
-image:.github/images/chat.png[]
+image:.github/images/spring-ai-redis-screenshot.png[]
 
 
