@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis/redis-stack-server
+    hostname: redis
+    container_name: redis
+    ports:
+      - 6379:6379
+  spring:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 10
+    environment:
+      - SPRING_AI_VECTORSTORE_REDIS_URI=redis://redis:6379
+      - SPRING_AI_AZURE_OPENAI_API_KEY=${SPRING_AI_AZURE_OPENAI_API_KEY}
+      - SPRING_AI_AZURE_OPENAI_CHAT_MODEL=${SPRING_AI_AZURE_OPENAI_CHAT_MODEL}
+      - SPRING_AI_AZURE_OPENAI_ENDPOINT=${SPRING_AI_AZURE_OPENAI_ENDPOINT}
