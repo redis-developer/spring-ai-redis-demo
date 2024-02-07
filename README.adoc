@@ -18,7 +18,7 @@ This demo requires Docker to build and run the application.
 
 === Azure OpenAI
 
-Obtain your Azure OpenAI `endpoint` (e.g. `https://demo-us-west.openai.azure.com/`) and `api-key` from the Azure OpenAI Service section on [Azure Portal](https://portal.azure.com)
+Obtain your Azure OpenAI `endpoint` (e.g. `https://demo-us-west.openai.azure.com/`) and `api-key` from the Azure OpenAI Service section on https://portal.azure.com[Azure Portal].
 
 The Spring AI project defines a configuration property named `spring.ai.azure.openai.api-key` that you should set to the value of the `API Key` obtained from Azure.
 
