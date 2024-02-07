@@ -3,8 +3,10 @@
 :revnumber: 0.1.0
 :toclevels: 3
 :docinfo1:
-:source-highlighter: coderay
-:coderay-linenums-mode: table
+:source-highlighter: prettify
+:icons: font
+:project-owner: redis-developer
+:project-name: spring-ai-redis-demo
 
 == Introduction
 
@@ -24,6 +26,15 @@ These documents then serve as the context for the user's question and are used i
 
 In our demonstration, we will use a dataset containing information about beers, including attributes such as name, Alcohol By Volume (ABV), International Bitterness Units (IBU), and a description for each beer.
 This dataset will be loaded into Redis to demonstrate the RAG workflow.
+
+== Dependencies
+
+This project uses the following dependencies:
+
+[source,xml,indent=0]
+----
+include::../../../pom.xml[tag=dependencies]
+----
 
 == Data Load
 
@@ -45,17 +56,12 @@ To load this beer dataset into Redis, we will use the `RagDataLoader` class.
 This class contains a run method that is executed at application startup.
 Within this method, we use a `JsonReader` to parse the dataset and then insert the documents into Redis using the autowired `VectorStore`.
 
-[source,java]
+[source,java,indent=0]
 ----
-JsonReader jsonLoader = new JsonReader(resource, "name", "abv", "ibu", "description"); <1>
-vectorStore.add(jsonLoader.get()); <2>
+include::../../../src/main/java/com/redis/demo/spring/ai/RagDataLoader.java[tag=loader]
 ----
 
-<1> Create a `JsonReader` with fields relevant to our use case
-
-<2> Use the autowired `VectorStore` to insert the documents into Redis
-
-What we have at this point is a dataset of about 20,000 beers with their corresponding embeddings.
+What we have at this point is a dataset of about 22,000 beers with their corresponding embeddings.
 
 == RAG Service
 
@@ -67,24 +73,10 @@ When a user prompt is received, the retrieve method is called, which performs th
 * Constructs a prompt using the retrieved documents and the user prompt
 * Calls a `ChatClient` with the prompt to generate a response
 
-[source,java]
+[source,java,indent=0]
 ----
-public Generation retrieve(String message) {
-   SearchRequest request = SearchRequest.query(message).withTopK(topK);
-   List<Document> similarDocuments = vectorStore.similaritySearch(request); <1>
-   Message systemMessage = getSystemMessage(similarDocuments);
-   UserMessage userMessage = new UserMessage(message);
-   Prompt prompt = new Prompt(List.of(systemMessage, userMessage)); <2>
-   ChatResponse response = chatClient.call(prompt); <3>
-   return response.getResult();
-}
+include::../../../src/main/java/com/redis/demo/spring/ai/RagService.java[tag=retrieve]
 ----
-
-<1> Query Redis for the top K documents most relevant to the input message
-
-<2> Assemble the complete prompt using a template
-
-<3> Call the autowired `ChatClient` with the prompt
 
 == Controller
 
@@ -92,19 +84,10 @@ Now that we have implemented our RAG service we can wrap it in a HTTP endpoint.
 
 The `RagController` class exposes it as a `POST` endpoint:
 
-[source,java]
+[source,java,indent=0]
 ----
-@PostMapping("/chat/{chatId}")
-@ResponseBody
-public Message chatMessage(@PathVariable("chatId") String chatId, @RequestBody Prompt prompt) {
-   Generation generation = ragService.retrieve(prompt.getPrompt()); <1>
-   return Message.of(generation.getOutput().getContent()); <2>
-}
+include::../../../src/main/java/com/redis/demo/spring/ai/RagController.java[tag=chatMessage]
 ----
-
-<1> Extract the user prompt from the body and pass it to the autowired `RagService`
-
-<2> Reply with the generated message
 
 == User Interface
 
@@ -117,6 +100,6 @@ Voilà! With just a few classes we have implemented a RAG application with Sprin
 
 == Related Resources
 
-* The code presented in this article is available on https://github.com/redis-developer/spring-ai-demo[GitHub].
-* For more information about Spring AI, visit the  https://docs.spring.io/spring-ai/reference[project homepage].
+* The code presented in this article is available on https://github.com/{project-owner}/{project-name}.git[GitHub].
+* For more information about Spring AI, visit the https://docs.spring.io/spring-ai/reference[project homepage].
 * Learn more about the Redis vector search API in the https://redis.io/docs/interact/search-and-query/advanced-concepts/vectors/[Redis vector documentation].

@@ -4,8 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.ChatClient;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.Generation;
@@ -21,44 +19,35 @@ import org.springframework.core.io.Resource;
 
 public class RagService {
 
-	private static final Logger logger = LoggerFactory.getLogger(RagService.class);
-
 	@Value("classpath:/prompts/system-qa.st")
 	private Resource systemBeerPrompt;
 
 	@Value("${topk:10}")
 	private int topK;
 
-	private final ChatClient chatClient;
+	private final ChatClient client;
 
-	private final VectorStore vectorStore;
+	private final VectorStore store;
 
-	public RagService(ChatClient chatClient, VectorStore vectorStore) {
-		this.chatClient = chatClient;
-		this.vectorStore = vectorStore;
+	public RagService(ChatClient client, VectorStore store) {
+		this.client = client;
+		this.store = store;
 	}
 
+	// tag::retrieve[]
 	public Generation retrieve(String message) {
-		logger.info("Retrieving relevant documents");
 		SearchRequest request = SearchRequest.query(message).withTopK(topK);
-		List<Document> similarDocuments = vectorStore.similaritySearch(request);
-		if (logger.isInfoEnabled()) {
-			logger.info(String.format("Found %s relevant documents.", similarDocuments.size()));
-		}
-		Message systemMessage = getSystemMessage(similarDocuments);
+		// Query Redis for the top K documents most relevant to the input message
+		List<Document> docs = store.similaritySearch(request);
+		Message systemMessage = getSystemMessage(docs);
 		UserMessage userMessage = new UserMessage(message);
-		logger.info("Asking AI model to reply to question.");
+		// Assemble the complete prompt using a template
 		Prompt prompt = new Prompt(List.of(systemMessage, userMessage));
-		if (logger.isInfoEnabled()) {
-			logger.info(prompt.toString());
-		}
-		ChatResponse response = chatClient.call(prompt);
-		logger.info("AI responded.");
-		if (logger.isInfoEnabled()) {
-			logger.info(response.getResult().toString());
-		}
+		// Call the autowired chat client with the prompt
+		ChatResponse response = client.call(prompt);
 		return response.getResult();
 	}
+	// end::retrieve[]
 
 	private Message getSystemMessage(List<Document> similarDocuments) {
 		String documents = similarDocuments.stream().map(Document::getContent).collect(Collectors.joining("\n"));

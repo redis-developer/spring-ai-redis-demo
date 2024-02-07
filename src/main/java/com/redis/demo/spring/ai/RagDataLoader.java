@@ -1,6 +1,5 @@
 package com.redis.demo.spring.ai;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
@@ -21,11 +20,10 @@ public class RagDataLoader implements ApplicationRunner {
 
 	private static final Logger logger = LoggerFactory.getLogger(RagDataLoader.class);
 
-	@Value("${datafile:https://storage.googleapis.com/jrx/beers_desc.json.gz}")
-	private Resource dataset;
+	private static final String[] KEYS = { "name", "abv", "ibu", "description" };
 
-	@Value("${skipload:false}")
-	private boolean skipLoad;
+	@Value("classpath:/data/beers.json.gz")
+	private Resource data;
 
 	private final RedisVectorStore vectorStore;
 
@@ -38,26 +36,25 @@ public class RagDataLoader implements ApplicationRunner {
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
-		if (skipLoad) {
-			return;
-		}
 		Map<String, Object> indexInfo = vectorStore.getJedis().ftInfo(properties.getIndex());
 		int numDocs = Integer.parseInt((String) indexInfo.getOrDefault("num_docs", "0"));
 		if (numDocs > 20000) {
+			logger.info("Embeddings already loaded. Skipping");
 			return;
 		}
-		logger.info("Creating Embeddings...");
-		JsonReader jsonLoader = new JsonReader(resource(), "name", "abv", "ibu", "description");
-		vectorStore.add(jsonLoader.get());
-		logger.info("Embeddings created.");
-	}
-
-	private Resource resource() throws IOException {
-		if (dataset.getFilename().endsWith(".gz")) {
-			GZIPInputStream inputStream = new GZIPInputStream(dataset.getInputStream());
-			return new InputStreamResource(inputStream, "beers_desc.json.gz");
+		Resource file = data;
+		if (data.getFilename().endsWith(".gz")) {
+			GZIPInputStream inputStream = new GZIPInputStream(data.getInputStream());
+			file = new InputStreamResource(inputStream, "beers.json.gz");
 		}
-		return dataset;
+		logger.info("Creating Embeddings...");
+		// tag::loader[]
+		// Create a JSON reader with fields relevant to our use case
+		JsonReader loader = new JsonReader(file, KEYS);
+		// Use the autowired VectorStore to insert the documents into Redis
+		vectorStore.add(loader.get());
+		// end::loader[]
+		logger.info("Embeddings created.");
 	}
 
 }

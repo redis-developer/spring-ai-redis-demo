@@ -22,27 +22,27 @@ Obtain your Azure OpenAI `endpoint` (e.g. `https://demo-us-west.openai.azure.com
 
 The Spring AI project defines a configuration property named `spring.ai.azure.openai.api-key` that you should set to the value of the `API Key` obtained from Azure.
 
-If your model deployment name is not the default `gpt-35-turbo` you can specify it using the configuration property named `spring.ai.azure.openai.chat.model`.
+If your model deployment name is not the default `gpt-35-turbo` you can specify it using the configuration property named `spring.ai.azure.openai.chat.options.model`.
 
 Exporting an environment variable is one way to set these configuration properties.
 [source,console]
 ----
 export SPRING_AI_AZURE_OPENAI_API_KEY=<INSERT KEY HERE>
 export SPRING_AI_AZURE_OPENAI_ENDPOINT=<INSERT ENDPOINT URL HERE>
-export SPRING_AI_AZURE_OPENAI_CHAT_MODEL=<INSERT MODEL NAME HERE>
+export SPRING_AI_AZURE_OPENAI_CHAT_OPTIONS_MODEL=<INSERT MODEL NAME HERE>
 ----
 
 == Run the demo
 
 [source,console]
 ----
-git clone https://github.com/redis-developer/spring-ai-demo.git
-cd spring-ai-demo
+git clone https://github.com/{project-owner}/{project-name}.git
+cd {project-name}
 docker compose up
 ----
 
 Once the Spring application is running (`com.....Application: Started Application in ...`), point your browser to link:http://localhost:8080[localhost:8080] and ask a question around beers:
 
-image:.github/images/spring-ai-redis-screenshot.png[]
+image:src/docs/asciidoc/spring-ai-redis-screenshot.png[]
 
 
