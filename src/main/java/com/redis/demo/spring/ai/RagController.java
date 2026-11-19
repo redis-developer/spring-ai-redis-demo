@@ -6,10 +6,14 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import com.redis.demo.spring.ai.model.Bm25RebuildResponse;
+import com.redis.demo.spring.ai.model.Bm25StatusResponse;
 import com.redis.demo.spring.ai.model.RetrievalResult;
+import com.redis.demo.spring.ai.service.Bm25AdminService;
 import com.redis.demo.spring.ai.service.RagService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,9 +23,11 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class RagController {
 
 	private final RagService ragService;
+	private final Bm25AdminService bm25AdminService;
 
-	public RagController(RagService ragService) {
+	public RagController(RagService ragService, Bm25AdminService bm25AdminService) {
 		this.ragService = ragService;
+		this.bm25AdminService = bm25AdminService;
 	}
 
 	@PostMapping("/chat/startChat")
@@ -79,6 +85,28 @@ public class RagController {
 	@ResponseBody
 	public List<RetrievalResult> retrieve(@RequestBody Map<String, String> payload) {
 		 return ragService.retrieveForTesting(payload);
+	}
+
+	/**
+	 * BM25 索引状态自检（运维）。
+	 * 返回内存/Redis/Milvus 三处计数与健康、一致性判定，用于定位“BM25 静默退化为纯向量”。
+	 */
+	@GetMapping("/admin/bm25/status")
+	@ResponseBody
+	public ResponseEntity<Bm25StatusResponse> bm25Status() {
+		return ResponseEntity.ok(bm25AdminService.status());
+	}
+
+	/**
+	 * 运维重建 BM25 索引：全量清空内存索引与 Redis 持久化后，从原始数据源重建并重新持久化。
+	 */
+	@PostMapping("/admin/bm25/rebuild")
+	@ResponseBody
+	public ResponseEntity<Bm25RebuildResponse> bm25Rebuild() {
+		Bm25RebuildResponse response = bm25AdminService.rebuild();
+		return response.success()
+				? ResponseEntity.ok(response)
+				: ResponseEntity.internalServerError().body(response);
 	}
 
 	public static class Message {

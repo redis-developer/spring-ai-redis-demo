@@ -210,6 +210,27 @@ public class HybridSearchService {
     }
 
     /**
+     * 清空 BM25 索引（同时清除 Redis 持久化数据），供运维重建使用
+     */
+    public void clearBM25Index() {
+        bm25SearchService.clearIndex();
+    }
+
+    /**
+     * BM25 索引是否已构建
+     */
+    public boolean isBm25IndexBuilt() {
+        return bm25SearchService.isIndexBuilt();
+    }
+
+    /**
+     * 当前 BM25 内存索引文档数
+     */
+    public int getBm25DocumentCount() {
+        return bm25SearchService.getDocumentCount();
+    }
+
+    /**
      * 内部类：带排名的文档
      */
     private static class RankedDoc {

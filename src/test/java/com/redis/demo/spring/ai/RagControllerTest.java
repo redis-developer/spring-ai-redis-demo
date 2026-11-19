@@ -1,6 +1,9 @@
 package com.redis.demo.spring.ai;
 
+import com.redis.demo.spring.ai.model.Bm25RebuildResponse;
+import com.redis.demo.spring.ai.model.Bm25StatusResponse;
 import com.redis.demo.spring.ai.model.RetrievalResult;
+import com.redis.demo.spring.ai.service.Bm25AdminService;
 import com.redis.demo.spring.ai.service.RagService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +17,7 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -25,6 +29,9 @@ class RagControllerTest {
 
     @MockBean
     private RagService ragService;
+
+    @MockBean
+    private Bm25AdminService bm25AdminService;
 
     @Test
     void retrieveShouldReturnRetrievalResults() throws Exception {
@@ -90,5 +97,44 @@ class RagControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void bm25StatusShouldReturnCountersAndRecommendation() throws Exception {
+        when(bm25AdminService.status()).thenReturn(new Bm25StatusResponse(
+                false, false, 0, false, false, 0L, 42, false, false,
+                "BM25 index missing while Milvus has data; call POST /admin/bm25/rebuild"));
+
+        mockMvc.perform(get("/admin/bm25/status"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.hybridEnabled").value(false))
+                .andExpect(jsonPath("$.indexBuilt").value(false))
+                .andExpect(jsonPath("$.memCount").value(0))
+                .andExpect(jsonPath("$.redisCount").value(0))
+                .andExpect(jsonPath("$.milvusCount").value(42))
+                .andExpect(jsonPath("$.healthy").value(false))
+                .andExpect(jsonPath("$.recommendation").exists());
+    }
+
+    @Test
+    void bm25RebuildShouldReturnRebuiltCount() throws Exception {
+        when(bm25AdminService.rebuild()).thenReturn(Bm25RebuildResponse.success(7));
+
+        mockMvc.perform(post("/admin/bm25/rebuild"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.bm25DocumentCount").value(7));
+    }
+
+    @Test
+    void bm25RebuildShouldReturn500OnFailure() throws Exception {
+        when(bm25AdminService.rebuild()).thenReturn(Bm25RebuildResponse.failure("Hybrid search is disabled"));
+
+        mockMvc.perform(post("/admin/bm25/rebuild"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").exists());
     }
 }

@@ -137,6 +137,31 @@ public class RagDataLoader implements ApplicationRunner {
 			return;
 		}
 
+		List<Document> documents = readDocumentsFromResource(file);
+
+		if (documents == null || documents.isEmpty()) {
+			logger.error("No ai documents found in the data file.");
+			return;
+		}
+		vectorStore.add(documents);
+		logger.info("Added {} documents to vector store", documents.size());
+
+		// 构建 BM25 索引（当混合检索启用时）
+		// 注意：如果Redis中已存在BM25索引数据，indexForBM25会跳过重新索引
+		if (hybridSearchService != null) {
+			logger.info("Building BM25 index for hybrid search...");
+			hybridSearchService.indexForBM25(documents);
+			logger.info("BM25 index built successfully with {} documents", documents.size());
+		}
+
+		logger.info("Embeddings created.");
+	}
+
+	/**
+	 * 根据资源类型加载文档（不做向量化，不写 VectorStore）。
+	 * 从 run() 中抽取，供启动加载与运维重建共用，保证分块/ID 与写入 Milvus 时一致。
+	 */
+	private List<Document> readDocumentsFromResource(Resource file) throws Exception {
 		List<Document> documents = null;
 
 		// 如果数据资源是.gz格式，则解压
@@ -166,7 +191,7 @@ public class RagDataLoader implements ApplicationRunner {
 			// 检查资源是否可读
 			if (!resourceToUse.exists()) {
 				logger.error("Resource does not exist: {}", resourceToUse.getDescription());
-				return;
+				return null;
 			}
 
 			// 直接使用 Resource 对象，而不是获取文件路径
@@ -176,22 +201,48 @@ public class RagDataLoader implements ApplicationRunner {
 
 		}
 
+		return documents;
+	}
+
+	/**
+	 * 仅从原始数据源加载文档（不写 VectorStore、不做 embedding），供运维重建 BM25 使用。
+	 */
+	public List<Document> loadSourceDocuments() throws Exception {
+		Resource file = data;
+		if (!file.exists()) {
+			logger.info("Local data file not found, downloading from URL...");
+			file = downloadDataFile();
+		}
+		if (file == null || !file.exists()) {
+			throw new IllegalStateException("Data source file is unavailable for BM25 rebuild");
+		}
+		return readDocumentsFromResource(file);
+	}
+
+	/**
+	 * 运维重建 BM25 索引：先清空内存索引与 Redis 持久化，再从原始数据源重新构建并持久化。
+	 * 用于修复“Milvus 已有数据但 BM25 索引缺失/不完整”的场景。
+	 *
+	 * @return 重建后 BM25 索引的文档数
+	 */
+	public int rebuildBm25FromSource() throws Exception {
+		if (hybridSearchService == null) {
+			throw new IllegalStateException(
+					"Hybrid search is disabled (hybrid.search.enabled=false); cannot rebuild BM25 index");
+		}
+		logger.warn("Manual BM25 index rebuild requested. Clearing existing BM25 index and Redis persistence...");
+		// 全量清空，避免 saveDocuments 因“existingCount>0”而拒绝覆盖、把不完整索引固化
+		hybridSearchService.clearBM25Index();
+
+		List<Document> documents = loadSourceDocuments();
 		if (documents == null || documents.isEmpty()) {
-			logger.error("No ai documents found in the data file.");
-			return;
+			logger.error("BM25 rebuild aborted: no documents loaded from data source");
+			return 0;
 		}
-		vectorStore.add(documents);
-		logger.info("Added {} documents to vector store", documents.size());
-
-		// 构建 BM25 索引（当混合检索启用时）
-		// 注意：如果Redis中已存在BM25索引数据，indexForBM25会跳过重新索引
-		if (hybridSearchService != null) {
-			logger.info("Building BM25 index for hybrid search...");
-			hybridSearchService.indexForBM25(documents);
-			logger.info("BM25 index built successfully with {} documents", documents.size());
-		}
-
-		logger.info("Embeddings created.");
+		hybridSearchService.indexForBM25(documents);
+		int count = hybridSearchService.getBm25DocumentCount();
+		logger.info("BM25 index rebuilt with {} documents (source {} docs)", count, documents.size());
+		return count;
 	}
 
 	private boolean checkDbCollectionRecords() {
