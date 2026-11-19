@@ -2,7 +2,7 @@
 
 English | [简体中文](ReadMe_Zhcn.md)
 
-This project is a Retrieval-Augmented Generation (RAG) demonstration application based on Spring Boot 3.2.3 and Spring AI 1.0.0. It integrates the Milvus vector database and Large Language Models (LLMs) to implement an intelligent Q&A system based on a domain knowledge base. The project adopts a frontend-backend separation architecture: the frontend is built with React, and the backend leverages the Spring ecosystem to integrate various AI capabilities, supporting hybrid search (BM25 + vector search), reranking, and data persistence.
+This project is a Retrieval-Augmented Generation (RAG) demonstration application based on Spring Boot 3.2.3 and Spring AI 1.0.0. It integrates the Milvus vector database and Large Language Models (LLMs) to provide an intelligent question-answering system for knowledge documents.
 
 ---
 
@@ -49,6 +49,124 @@ The following details the specific technology selections, their versions, and co
 
 ---
 
+## 🤖 Chat, Embedding, and Rerank Model Configuration
+
+The project separates the Chat Model, Embedding Model, and Rerank Model. Their provider and deployment location are configured independently.
+
+| Role | Current default | API location | Main configuration |
+| --- | --- | --- | --- |
+| Chat Model | SiliconFlow `Qwen/Qwen3-8B` | Remote: `https://api.siliconflow.cn` | `chat.provider=openai`, `spring.ai.openai.*` |
+| Embedding Model | Ollama `bge-m3:latest` | Local Ollama: `http://127.0.0.1:11434` | `spring.ai.ollama.base-url`, `spring.ai.ollama.embedding.options.model` |
+| Rerank Model | SiliconFlow `BAAI/bge-reranker-v2-m3` | Remote: `https://api.siliconflow.cn/v1/rerank` | `rerank.enabled=true`, `rerank.model` |
+
+All model settings are in [`src/main/resources/application.properties`](src/main/resources/application.properties). The Java provider selection is implemented by:
+
+* [`ChatModelConfiguration.java`](src/main/java/com/redis/demo/spring/ai/config/ChatModelConfiguration.java)
+* [`RagConfiguration.java`](src/main/java/com/redis/demo/spring/ai/RagConfiguration.java)
+* [`RerankService.java`](src/main/java/com/redis/demo/spring/ai/service/RerankService.java)
+
+### 1. Chat Model
+
+The `chat.provider` property switches the Chat Model implementation:
+
+```properties
+# ollama or openai
+chat.provider=openai
+```
+
+* `chat.provider=ollama` uses the local Ollama Chat API. It is configured by `spring.ai.ollama.chat.options.model` and `spring.ai.ollama.base-url`.
+* `chat.provider=openai` uses the OpenAI-compatible Chat Completions API. It can be set to official OpenAI or another compatible provider such as SiliconFlow.
+
+The current remote SiliconFlow configuration is:
+
+```properties
+spring.ai.openai.api-key=${SILICONFLOW_KEY:}
+spring.ai.openai.chat.model=Qwen/Qwen3-8B
+spring.ai.openai.chat.options.model=Qwen/Qwen3-8B
+spring.ai.openai.base-url=https://api.siliconflow.cn
+spring.ai.openai.chat.options.temperature=0.7
+```
+
+Set the API key before starting the application:
+
+```bash
+# macOS / Linux
+export SILICONFLOW_KEY=your_siliconflow_api_key
+
+# Windows Command Prompt
+set SILICONFLOW_KEY=your_siliconflow_api_key
+```
+
+To switch back to local Ollama chat generation:
+
+```properties
+chat.provider=ollama
+spring.ai.ollama.base-url=http://127.0.0.1:11434
+spring.ai.ollama.chat.options.model=qwen2.5:0.5b
+spring.ai.ollama.connection-timeout=60s
+spring.ai.ollama.read-timeout=60s
+```
+
+Download the local model first:
+
+```bash
+ollama pull qwen2.5:0.5b
+ollama serve
+```
+
+### 2. Embedding Model
+
+The Embedding Model is currently independent of `chat.provider` and always uses Ollama:
+
+```properties
+spring.ai.ollama.base-url=http://127.0.0.1:11434
+spring.ai.ollama.embedding.options.model=bge-m3:latest
+```
+
+This means document ingestion and user query embedding are sent to Ollama on `127.0.0.1:11434`. Change `spring.ai.ollama.base-url` when Ollama runs in a container or on another host.
+
+```bash
+ollama pull bge-m3:latest
+ollama serve
+```
+
+The vector dimension must match the embedding model. The current Milvus configuration uses 1024 dimensions:
+
+```properties
+spring.ai.vectorstore.milvus.embeddingDimension=1024
+```
+
+### 3. Rerank Model
+
+Reranking is disabled unless explicitly enabled:
+
+```properties
+rerank.enabled=true
+rerank.model=BAAI/bge-reranker-v2-m3
+rerank.topN=5
+```
+
+The rerank call is sent to the remote SiliconFlow endpoint `https://api.siliconflow.cn/v1/rerank` using `SILICONFLOW_KEY`. If the API call fails, `RerankService` falls back to the original candidate order and returns the configured `topN` documents.
+
+The API key is resolved in this order:
+
+1. `SILICONFLOW_KEY` environment variable
+2. `siliconflow.api-key` property
+3. The empty-key fallback, for which the service logs a warning
+
+### DeepSeek-OCR
+
+PDF OCR is a separate remote service and is not a Chat, Embedding, or Rerank Model role. It uses SiliconFlow's remote DeepSeek-OCR API:
+
+```properties
+deepseek-ocr.enabled=true
+deepseek-ocr.model=deepseek-ai/DeepSeek-OCR
+```
+
+It also uses `SILICONFLOW_KEY`. PDF pages are rendered locally, sent as Base64 JPEG images to the remote API, and converted to Markdown before chunking.
+
+---
+
 ## 💻 Environmental Dependency Requirements
 
 To avoid environmental conflicts, please ensure your development and runtime environments meet the following minimum compatible versions:
@@ -69,34 +187,42 @@ The directly executable instructions adapted for Windows, macOS, and Linux mains
 ### 1. Start Infrastructure Dependencies (Milvus, Redis, etc.)
 
 Use Docker Compose to start the dependency components with one click:
-```bash
-# Enter the project root directory
-cd spring-ai-redis-demo
 
-# Start the infrastructure containers
+```bash
+cd spring-ai-redis-demo
 docker-compose up -d
 ```
 
-### 2. Download and Run Local Large Models (Ollama)
+### 2. Download and Run Local Models (Ollama)
 
 Ensure you have installed [Ollama](https://ollama.com/):
+
 ```bash
 # Download and run the embedding model (1024-dimensional vectors)
 ollama pull bge-m3:latest
 
-# Download and run the conversation model
+# Download and run the optional local chat model
 ollama pull qwen2.5:0.5b
 ```
 
-### 3. Configure Environment Variables (Optional, if using Rerank or external Cloud Redis)
+### 3. Configure Environment Variables
 
-Export the required Keys in your terminal or environment variable settings (examples are for Unix/macOS; use `set` for Windows):
+For remote Chat, Rerank, and DeepSeek-OOCR usage through SiliconFlow:
+
 ```bash
 # Windows
 set SILICONFLOW_KEY=your_siliconflow_api_key
 
 # macOS / Linux
 export SILICONFLOW_KEY=your_siliconflow_api_key
+```
+
+For Redis Cloud or a remote Redis server:
+
+```bash
+export REDIS_HOST=your_redis_host
+export REDIS_PORT=6379
+export REDIS_PASSWORD=your_redis_password
 ```
 
 ### 4. Compile and Start Backend Service
@@ -116,6 +242,7 @@ mvnw.cmd spring-boot:run
 Once the application starts, it will automatically listen on port `8080`. Visit [http://localhost:8080](http://localhost:8080) to see the frontend React interface.
 
 *(Appendix: Commands to start the frontend separately:)*
+
 ```bash
 cd frontend
 npm install
@@ -175,12 +302,16 @@ spring-ai-redis-demo/
 
 2. **Milvus Connection Refused**
     - **Symptom**: Backend throws `Failed to connect to Milvus` exception upon startup.
-    - **Solution**: Check if Docker Compose is fully started (`docker ps` to ensure milvus status is `healthy` or `running`); if deployed remotely, ensure the `host` IP in `application.properties` is accessible.
+    - **Solution**: Check if Docker Compose is fully started (`docker ps` to ensure milvus status is `healthy` or `running`); if deployed remotely, ensure the `host` IP in `application.properties` is reachable.
 
 3. **Ollama model pull failed or timed out**
     - **Symptom**: Backend logs indicate model call timeout or 404 during conversation.
-    - **Solution**: Ensure you have successfully pulled the model (e.g., `qwen2.5`) locally beforehand via `ollama pull <model_name>`, and check if the `http://127.0.0.1:11434` service is alive.
+    - **Solution**: Ensure you have successfully pulled the model (e.g., `qwen2.5`) locally beforehand via `ollama pull <model_name>`, and check if `http://127.0.0.1:11434` is alive.
 
-4. **Redis OOM (Out Of Memory) Issues**
+4. **Remote API Key missing or rejected**
+    - **Symptom**: Chat, rerank, or DeepSeek-OCR calls fail with authentication or authorization errors.
+    - **Solution**: Set `SILICONFLOW_KEY` and verify that the key has access to the configured models.
+
+5. **Redis OOM (Out Of Memory) Issues**
     - **Symptom**: Redis crashes when loading massive data to establish BM25 index persistence.
-    - **Solution**: The backend application has a mechanism to automatically downgrade to a local Lucene in-memory index; please monitor Redis memory allocation. If necessary, you can configure to increase the maximum available memory for the Redis container in `docker-compose.yml`.
+    - **Solution**: The backend application has a mechanism to automatically downgrade to a local Lucene in-memory index; please monitor Redis memory allocation.
