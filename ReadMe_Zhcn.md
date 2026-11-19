@@ -2,13 +2,13 @@
 
 [English](README.md) | 简体中文
 
-本项目是一个基于 Spring Boot 3.2.3 和 Spring AI 1.0.0 的检索增强生成（RAG）演示应用，结合了 Milvus 向量数据库和大型语言模型（LLM）来实现基于领域知识库的智能问答系统。项目采用前后端分离架构，前端使用 React 构建，后端利用 Spring 生态集成各项 AI 能力，支持混合检索（BM25 + 向量检索）、精排（Rerank）以及数据持久化。
+本项目是一个基于 Spring Boot 3.2.3 和 Spring AI 1.0.0 的检索增强生成（RAG）演示应用，结合了 Milvus 向量数据库和大型语言模型（LLM），实现面向领域知识文档的智能问答。
 
 ---
 
 ## 🛠️ 技术栈清单
 
-以下梳理了本项目各核心模块采用的具体技术选型及其版本和核心作用。
+以下梳理了本项目各核心模块采用的具体技术选型、版本及核心作用。
 
 ### 1. 🎨 前端框架 (Frontend)
 
@@ -43,9 +43,127 @@
 | --- | --- | --- |
 | **Maven** | `3.6+` | 后端项目依赖管理及构建工具。 |
 | **Node.js & npm** | Node `v18.16.0`+, npm `9.5.1`+ | 前端运行环境及包管理工具。 |
-| **Frontend Maven Plugin**| `1.15.0` | 在 Maven 构建生命周期中自动构建前端项目（如下载 Node 并执行 `npm run build`）。 |
-| **Docker & Compose** | `20+` | 容器化技术，统一编排 Redis、Milvus、应用本身等组件的部署环境，解决依赖冲突问题。 |
+| **Frontend Maven Plugin** | `1.15.0` | 在 Maven 构建生命周期中自动构建前端项目（如下载 Node 并执行 `npm run build`）。 |
+| **Docker & Compose** | `20+` | 容量化技术，统一编排 Redis、Milvus、应用本身等组件的部署环境，解决依赖冲突问题。 |
 | **JaCoCo** | `0.8.8` | 代码覆盖率工具，在测试阶段生成统计报告，保障代码质量。 |
+
+---
+
+## 🤖 Chat、Embedding 与 Rerank 模型配置
+
+项目将对话生成、文本嵌入和结果重排分为独立的模型角色。三者可以分别使用本地或远程 API。
+
+| 角色 | 当前默认值 | API 地址 | 主要配置项 |
+| --- | --- | --- | --- |
+| Chat Model | 硅基流动 `Qwen/Qwen3-8B` | 远程：`https://api.siliconflow.cn` | `chat.provider=openai`、`spring.ai.openai.*` |
+| Embedding Model | Ollama `bge-m3:latest` | 本地 Ollama：`http://127.0.0.1:11434` | `spring.ai.ollama.base-url`、`spring.ai.ollama.embedding.options.model` |
+| Rerank Model | 硅基流动 `BAAI/bge-reranker-v2-m3` | 远程：`https://api.siliconflow.cn/v1/rerank` | `rerank.enabled=true`、`rerank.model` |
+
+所有模型配置位于 [`src/main/resources/application.properties`](src/main/resources/application.properties)，Java 配置和调用实现位于：
+
+* [`ChatModelConfiguration.java`](src/main/java/com/redis/demo/spring/ai/config/ChatModelConfiguration.java)
+* [`RagConfiguration.java`](src/main/java/com/redis/demo/spring/ai/RagConfiguration.java)
+* [`RerankService.java`](src/main/java/com/redis/demo/spring/ai/service/RerankService.java)
+
+### 1. Chat Model
+
+`chat.provider` 属性用于切换 Chat Model 实现：
+
+```properties
+# 可选值：ollama 或 openai
+chat.provider=openai
+```
+
+* `chat.provider=ollama`：使用本地 Ollama Chat API，由 `spring.ai.ollama.chat.options.model` 和 `spring.ai.ollama.base-url` 配置。
+* `chat.provider=openai`：使用 OpenAI 兼容的 Chat Completions API，可连接官方 OpenAI 或硅基流动等兼容服务。
+
+当前远程硅基流动配置：
+
+```properties
+spring.ai.openai.api-key=${SILICONFLOW_KEY:}
+spring.ai.openai.chat.model=Qwen/Qwen3-8B
+spring.ai.openai.chat.options.model=Qwen/Qwen3-8B
+spring.ai.openai.base-url=https://api.siliconflow.cn
+spring.ai.openai.chat.options.temperature=0.7
+```
+
+启动前设置 API Key：
+
+```bash
+# macOS / Linux
+export SILICONFLOW_KEY=你的硅基流动API_KEY
+
+# Windows 命令提示符
+set SILICONFLOW_KEY=你的硅基流动API_KEY
+```
+
+切换为本地 Ollama 对话模型：
+
+```properties
+chat.provider=ollama
+spring.ai.ollama.base-url=http://127.0.0.1:11434
+spring.ai.ollama.chat.options.model=qwen2.5:0.5b
+spring.ai.ollama.connection-timeout=60s
+spring.ai.ollama.read-timeout=60s
+```
+
+先下载并启动本地模型：
+
+```bash
+ollama pull qwen2.5:0.5b
+ollama serve
+```
+
+### 2. Embedding Model
+
+Embedding Model 当前不受 `chat.provider` 影响，始终使用 Ollama：
+
+```properties
+spring.ai.ollama.base-url=http://127.0.0.1:11434
+spring.ai.ollama.embedding.options.model=bge-m3:latest
+```
+
+文档入库和用户查询向量化都会调用 `127.0.0.1:11434` 上的 Ollama。若 Ollama 部署在 Docker 容器或其他主机，请修改 `spring.ai.ollama.base-url`。
+
+```bash
+ollama pull bge-m3:latest
+ollama serve
+```
+
+向量维度必须与 Embedding Model 输出维度一致。当前 Milvus 配置使用 1024 维：
+
+```properties
+spring.ai.vectorstore.milvus.embeddingDimension=1024
+```
+
+### 3. Rerank Model
+
+精排默认只有显式启用时才生效：
+
+```properties
+rerank.enabled=true
+rerank.model=BAAI/bge-reranker-v2-m3
+rerank.topN=5
+```
+
+Rerank 请求使用 `SILICONFLOW_KEY` 调用远程接口 `https://api.siliconflow.cn/v1/rerank`。如果精排 API 调用失败，`RerankService` 会降级为原始候选顺序，并返回配置的 `topN` 文档。
+
+API Key 的读取优先级：
+
+1. 环境变量 `SILICONFLOW_KEY`
+2. 配置项 `siliconflow.api-key`
+3. 未配置时记录警告并返回空 Key
+
+### DeepSeek-OCR
+
+PDF OCR 是独立的远程文档识别能力，不属于 Chat、Embedding 或 Rerank 模型角色。它使用硅基流动的 DeepSeek-OCR API：
+
+```properties
+deepseek-ocr.enabled=true
+deepseek-ocr.model=deepseek-ai/DeepSeek-OCR
+```
+
+同样使用 `SILICONFLOW_KEY`。PDF 页面会在本地渲染为 JPEG 图片并转成 Base64，发送到远程 API 识别为 Markdown，再进行文档切块。
 
 ---
 
@@ -53,12 +171,12 @@
 
 为了避免环境冲突，请确保您的开发和运行环境满足以下最低兼容版本：
 
-* **Java**: `JDK 17` 及以上
-* **Maven**: `3.6.3` 及以上
-* **Node.js**: `v18.16.0` 及以上 (推荐 LTS 版本)
-* **npm**: `9.5.1` 及以上
-* **Docker**: 最新稳定版
-* **Docker Compose**: `v2.0.0` 及以上
+* **Java**：`JDK 17` 及以上
+* **Maven**：`3.6.3` 及以上
+* **Node.js**：`v18.16.0` 及以上（推荐 LTS 版本）
+* **npm**：`9.5.1` 及以上
+* **Docker**：最新稳定版
+* **Docker Compose**：`v2.0.0` 及以上
 
 ---
 
@@ -66,37 +184,45 @@
 
 适配 Windows、macOS、Linux 主流开发环境的可直接执行指令如下。
 
-### 1. 启动基础设施依赖 (Milvus, Redis 等)
+### 1. 启动基础设施依赖（Milvus、Redis 等）
 
 利用 Docker Compose 一键启动依赖组件：
-```bash
-# 进入项目根目录
-cd spring-ai-redis-demo
 
-# 启动基础设施容器
+```bash
+cd spring-ai-redis-demo
 docker-compose up -d
 ```
 
-### 2. 下载并运行本地大模型 (Ollama)
+### 2. 下载并运行本地模型（Ollama）
 
-确保你已经安装了 [Ollama](https://ollama.com/)：
+确保已安装 [Ollama](https://ollama.com/)：
+
 ```bash
-# 下载并运行嵌入模型 (1024 维向量)
+# 下载嵌入模型（1024 维向量）
 ollama pull bge-m3:latest
 
-# 下载并运行对话模型
+# 下载可选的本地对话模型
 ollama pull qwen2.5:0.5b
 ```
 
-### 3. 配置环境变量 (可选，如果需要使用 Rerank 精排或外部云 Redis)
+### 3. 配置环境变量
 
-在终端或环境变量设置中导出所需的 Key（示例为 Unix/macOS，Windows 使用 `set`）：
+如需通过硅基流动使用远程 Chat、Rerank 或 DeepSeek-OCR：
+
 ```bash
 # Windows
 set SILICONFLOW_KEY=你的硅基流动API_KEY
 
 # macOS / Linux
 export SILICONFLOW_KEY=你的硅基流动API_KEY
+```
+
+如需使用 Redis Cloud 或远程 Redis：
+
+```bash
+export REDIS_HOST=你的Redis地址
+export REDIS_PORT=6379
+export REDIS_PASSWORD=你的Redis密码
 ```
 
 ### 4. 编译与启动后端服务
@@ -113,9 +239,10 @@ mvnw.cmd spring-boot:run
 ./mvnw spring-boot:run
 ```
 
-应用启动后，将自动在端口 `8080` 监听。访问 [http://localhost:8080](http://localhost:8080) 即可看到前端 React 界面。
+应用启动后，将在端口 `8080` 监听。访问 [http://localhost:8080](http://localhost:8080) 即可看到前端 React 界面。
 
-*(附：单独启动前端的命令：)*
+附：单独启动前端的命令：
+
 ```bash
 cd frontend
 npm install
@@ -129,9 +256,9 @@ npm start
 ```text
 spring-ai-redis-demo/
 ├── frontend/                       # React 前端工程目录
-│   ├── public/                     # 静态资源 (HTML 模板、图标等)
+│   ├── public/                     # 静态资源（HTML 模板、图标等）
 │   ├── src/                        # 前端源代码
-│   │   ├── Components/             # 界面组件 (如 ChatWindow)
+│   │   ├── Components/             # 界面组件（如 ChatWindow）
 │   │   ├── App.js / api.js         # 前端根组件与 API 请求封装
 │   └── package.json                # 前端依赖配置
 ├── src/
@@ -139,10 +266,10 @@ spring-ai-redis-demo/
 │   │   ├── java/com/redis/demo/    # 后端 Java 核心业务逻辑
 │   │   │   ├── RagApplication.java # Spring Boot 启动类
 │   │   │   ├── RagController.java  # REST API 路由
-│   │   │   ├── RagConfiguration.java# AI 及 向量数据库 Bean 配置
+│   │   │   ├── RagConfiguration.java# AI 及向量数据库 Bean 配置
 │   │   │   ├── RagDataLoader.java  # 应用启动时初始数据的预处理和注入
-│   │   │   └── service/            # RAG、精排、BM25搜索等业务服务
-│   │   └── resources/              # 后端配置 (application.properties 等)
+│   │   │   └── service/            # RAG、精排、BM25 搜索等业务服务
+│   │   └── resources/              # 后端配置（application.properties 等）
 │   └── test/                       # 单元测试与集成测试
 ├── Dockerfile                      # 应用容器构建文件
 ├── docker-compose.yml              # 依赖服务编排文件
@@ -160,27 +287,31 @@ spring-ai-redis-demo/
 2. **提交规范**：
     - 采用 Angular 规范格式：`<type>(<scope>): <subject>`（例如 `feat(rag): 增加 RRF 混合检索算法`、`fix(ui): 修复聊天气泡溢出问题`）。
 3. **代码风格**：
-    - Java：遵循 Spring Boot 官方编码规范，并利用 Lombok `@Slf4j`, `@Data` 简化代码。
-    - 前端：遵循 ESLint + Prettier，采用函数式组件与 Hooks 为主（在逐步迁移旧 Class 组件的情况下）。
+    - Java：遵循 Spring Boot 官方编码规范，并利用 Lombok `@Slf4j`、`@Data` 简化代码。
+    - 前端：遵循 ESLint + Prettier，采用函数式组件与 Hooks 为主（在逐步迁移旧 Class 组件）。
 4. **组件职责**：
-    - 保持单一职责原则。Controller 层只处理 HTTP 请求包装；具体大模型拼接提示、检索流程交由 Service 层处理。
+    - 保持单一职责原则。Controller 层只处理 HTTP 请求包装；大模型提示拼接、检索流程交由 Service 层处理。
 
 ---
 
-## ❓ 常见问题排查 (Troubleshooting)
+## ❓ 常见问题排查（Troubleshooting）
 
 1. **前端编译失败或 Node 找不到**
     - **问题表现**：运行 `mvn clean install` 时在 `frontend-maven-plugin` 步骤报错。
-    - **解决方案**：检查系统是否正确安装了 Node.js（`v18+`），或者清理 Maven 缓存后重试。也可以手动进入 `frontend` 目录执行 `npm install` 与 `npm run build`。
+    - **解决方案**：检查系统是否正确安装 Node.js（`v18+`），或者清理 Maven 缓存后重试。也可以手动进入 `frontend` 目录执行 `npm install` 与 `npm run build`。
 
 2. **Milvus 连接被拒绝 / Connection Refused**
     - **问题表现**：后端启动时抛出 `Failed to connect to Milvus` 异常。
-    - **解决方案**：检查 Docker Compose 是否已完全启动（`docker ps` 确保 milvus 状态为 `healthy` 或 `running`）；若部署在远程，请确保 `application.properties` 中的 `host` IP 能够连通。
+    - **解决方案**：检查 Docker Compose 是否已完全启动（`docker ps` 确保 Milvus 状态为 `healthy` 或 `running`）；若部署在远程，请确保 `application.properties` 中的 `host` 地址可达。
 
 3. **Ollama 模型拉取失败或超时**
-    - **问题表现**：对话时后端日志报错提示模型调用超时或 404。
-    - **解决方案**：确保你事先通过 `ollama pull <model_name>` 将 `qwen2.5` 等模型成功拉取到本地，并检查 `http://127.0.0.1:11434` 服务是否存活。
+    - **问题表现**：对话或生成 Embedding 时后端日志提示模型调用超时或 404。
+    - **解决方案**：通过 `ollama pull <model_name>` 将 `bge-m3:latest` 或 `qwen2.5:0.5b` 拉取到本地，并检查 `http://127.0.0.1:11434` 是否存活。
 
-4. **Redis OOM (内存溢出) 问题**
-    - **问题表现**：加载海量数据建立 BM25 索引持久化时，Redis 崩溃。
-    - **解决方案**：后端应用已具备自动降级至本地 Lucene 内存索引机制，请监控 Redis 内存分配；如有需要，可以在 `docker-compose.yml` 中配置调大 Redis 容器的最大可用内存。
+4. **远程 API Key 缺失或被拒绝**
+    - **问题表现**：Chat、Rerank 或 DeepSeek-OCR 调用出现鉴权或授权错误。
+    - **解决方案**：设置 `SILICONFLOW_KEY`，并确认该 Key 有权访问配置中的模型。
+
+5. **Redis OOM（内存溢出）**
+    - **问题表现**：加载海量数据建立 BM25 索引持久化时 Redis 崩溃。
+    - **解决方案**：后端应用具备降级到本地 Lucene 内存索引的机制；请监控 Redis 内存分配，如有需要可在 `docker-compose.yml` 中调整 Redis 内存限制。
