@@ -71,7 +71,7 @@ public class ChatModelConfiguration {
     @ConditionalOnProperty(name = "chat.provider", havingValue = "openai")
     public OpenAiApi openAiApi(
             @Value("${spring.ai.openai.base-url:https://api.openai.com}") String baseUrl,
-            @Value("${OPENAI_API_KEY:${spring.ai.openai.api-key:}}") String apiKey) {
+            @Value("${SILICONFLOW_KEY:${spring.ai.openai.api-key:${OPENAI_API_KEY:}}}") String apiKey) {
         logger.info("Creating OpenAiApi with baseUrl: {}", baseUrl);
         if (apiKey == null || apiKey.isEmpty()) {
             throw new IllegalArgumentException(
