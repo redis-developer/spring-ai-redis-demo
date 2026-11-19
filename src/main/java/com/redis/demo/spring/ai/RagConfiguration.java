@@ -36,17 +36,25 @@ public class RagConfiguration {
     @Value("${spring.ai.vectorstore.pinecone.index-name}")
     private String indexName;
 
+    /** 上游 HTTP 连接超时，毫秒 */
+    private static final int CONNECT_TIMEOUT_MILLIS = 10_000;
+
+    /** 上游 HTTP 读取超时，毫秒 */
+    private static final int READ_TIMEOUT_MILLIS = 60_000;
+
+    /**
+     * 上游 HTTP 客户端超时配置。
+     * 层级关系必须保持：HTTP 读取超时(60s) &lt; RagController 业务超时(65s)
+     * &lt; spring.mvc.async.request-timeout(90s)，否则最外层的容器超时会先把响应变成 503。
+     */
     @Bean
     public RestClientCustomizer restClientCustomizer() {
-        return restClientBuilder -> restClientBuilder
-                .requestFactory(new SimpleClientHttpRequestFactory() {
-                    {
-                        // 设置连接超时 (毫秒)
-                        setConnectTimeout(Duration.ofSeconds(10).toMillisPart());
-                        // 设置读取超时 (毫秒) - 这里设置为 60 秒
-                        setReadTimeout(Duration.ofSeconds(60).toMillisPart());
-                    }
-                });
+        // 原先写成 Duration.ofSeconds(60).toMillisPart()：toMillisPart() 只取「秒以外的毫秒」，
+        // 整分钟返回 0，等于不限超时，上游卡住时线程会一直阻塞。
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(CONNECT_TIMEOUT_MILLIS);
+        requestFactory.setReadTimeout(READ_TIMEOUT_MILLIS);
+        return restClientBuilder -> restClientBuilder.requestFactory(requestFactory);
     }
 
     @Bean

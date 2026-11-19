@@ -100,6 +100,16 @@ class RagControllerTest {
     }
 
     @Test
+    void startChatShouldReturnChatIdReadByFrontend() throws Exception {
+        // 前端 ChatWindow.start() 用 response.chatId 拼 /chat/{chatId}，
+        // 字段名不再是 chatId 时会退化成请求 /chat/undefined
+        mockMvc.perform(post("/chat/startChat"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.chatId").isString())
+                .andExpect(jsonPath("$.chatId").isNotEmpty());
+    }
+
+    @Test
     void bm25StatusShouldReturnCountersAndRecommendation() throws Exception {
         when(bm25AdminService.status()).thenReturn(new Bm25StatusResponse(
                 false, false, 0, false, false, 0L, 42, false, false,

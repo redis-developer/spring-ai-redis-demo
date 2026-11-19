@@ -16,6 +16,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
 
@@ -70,6 +71,7 @@ public class ChatModelConfiguration {
     @Bean
     @ConditionalOnProperty(name = "chat.provider", havingValue = "openai")
     public OpenAiApi openAiApi(
+            RestClient.Builder restClientBuilder,
             @Value("${spring.ai.openai.base-url:https://api.openai.com}") String baseUrl,
             @Value("${SILICONFLOW_KEY:${spring.ai.openai.api-key:${OPENAI_API_KEY:}}}") String apiKey) {
         logger.info("Creating OpenAiApi with baseUrl: {}", baseUrl);
@@ -77,9 +79,12 @@ public class ChatModelConfiguration {
             throw new IllegalArgumentException(
                     "OpenAI API Key is required. Set OPENAI_API_KEY environment variable or spring.ai.openai.api-key property.");
         }
+        // 注入容器里的 RestClient.Builder，使 RestClientCustomizer 中配置的连接/读取超时真正生效；
+        // 若直接用 OpenAiApi.builder() 的默认 RestClient，上游卡住时会没有任何超时保护。
         return OpenAiApi.builder()
                 .baseUrl(baseUrl)
                 .apiKey(apiKey)
+                .restClientBuilder(restClientBuilder)
                 .build();
     }
 

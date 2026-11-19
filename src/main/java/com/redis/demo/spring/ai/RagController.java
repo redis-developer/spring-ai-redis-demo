@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.redis.demo.spring.ai.model.Bm25RebuildResponse;
 import com.redis.demo.spring.ai.model.Bm25StatusResponse;
+import com.redis.demo.spring.ai.model.ChatSession;
 import com.redis.demo.spring.ai.model.RetrievalResult;
 import com.redis.demo.spring.ai.service.Bm25AdminService;
 import com.redis.demo.spring.ai.service.RagService;
@@ -32,8 +33,8 @@ public class RagController {
 
 	@PostMapping("/chat/startChat")
 	@ResponseBody
-	public Message startChat() {
-		return Message.of(UUID.randomUUID().toString());
+	public ChatSession startChat() {
+		return new ChatSession(UUID.randomUUID().toString());
 	}
 
 	//tag::chatMessage[]
@@ -51,8 +52,9 @@ public class RagController {
 					return ragService.retrieve(prompt.getPrompt());
 				})
 				// 3. 设置 Java 层面的超时 (JDK 9+ 支持 orTimeout)
-				// 建议设置为 60秒，给 Ollama 留足余地
-				.orTimeout(60, TimeUnit.SECONDS)
+				// 必须小于 spring.mvc.async.request-timeout(90s)、大于上游 HTTP 读取超时(60s)，
+				// 否则容器会先抛 AsyncRequestTimeoutException（对外表现为 503），这里的友好错误信息永远回不到前端
+				.orTimeout(65, TimeUnit.SECONDS)
 
 				// 4. 成功时的处理
 				.thenApply(generation -> {

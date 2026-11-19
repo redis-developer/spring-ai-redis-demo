@@ -14,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +33,14 @@ public class RerankService {
      */
     private static final String SILICONFLOW_RERANK_URL = "https://api.siliconflow.cn/v1/rerank";
 
+    /**
+     * Rerank 接口超时（毫秒）。默认 RestTemplate 不限超时，一次卡住会把整个
+     * /chat 异步请求拖到容器超时（表现为 503），这里让它快速失败并降级为原序。
+     */
+    private static final int CONNECT_TIMEOUT_MILLIS = 10_000;
+
+    private static final int READ_TIMEOUT_MILLIS = 20_000;
+
     private final String apiKey;
     private final String rerankModel;
     private final RestTemplate restTemplate;
@@ -46,7 +55,10 @@ public class RerankService {
     public RerankService(String apiKey, String rerankModel) {
         this.apiKey = apiKey;
         this.rerankModel = rerankModel;
-        this.restTemplate = new RestTemplate();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(CONNECT_TIMEOUT_MILLIS);
+        requestFactory.setReadTimeout(READ_TIMEOUT_MILLIS);
+        this.restTemplate = new RestTemplate(requestFactory);
         this.objectMapper = new ObjectMapper();
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
