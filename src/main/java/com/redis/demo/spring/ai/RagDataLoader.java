@@ -106,44 +106,40 @@ public class RagDataLoader implements ApplicationRunner {
 	 * 出口统一过一道 token 上限守卫，Milvus 与 BM25 拿到的是同一批切块。
 	 */
 	private List<Document> readDocumentsFromResource(Resource file) throws Exception {
-		List<Document> documents = null;
+		String filename = file.getFilename();
 
-		// 如果数据资源是.gz格式，则解压
-		InputStreamResource inputStreamResource = null;
-		if (file.getFilename() != null && file.getFilename().endsWith(".gz")) {
-			logger.info("Decompressing GZIP file: {}", file.getFilename());
+		// docx / pdf：由各自的读取器直接产出文档，不需要解压也不需要 JSON reader
+		if (filename != null && (filename.endsWith(".docx") || filename.endsWith(".pdf"))) {
+			logger.info("Creating Embeddings...");
+			return TokenLimitEnforcer.enforceTokenLimit(hybridDocumentService.loadDocDirect(file));
+		}
+
+		// 其余都按 JSON 处理：gz / zip 先解压，再把（解压后的）资源交给 JSON reader；
+		// 以前这一段跟在 if-else 链的 else 里，.gz 分支根本走不到，压缩数据会静默加载 0 条
+		Resource jsonResource = file;
+		if (filename != null && filename.endsWith(".gz")) {
+			logger.info("Decompressing GZIP file: {}", filename);
 			GZIPInputStream inputStream = new GZIPInputStream(file.getInputStream());
-			inputStreamResource = new InputStreamResource(inputStream, "beers.json");
-		} else if (file.getFilename() != null && file.getFilename().endsWith(".zip")) {
-			logger.info("Decompressing ZIP file: {}", file.getFilename());
+			jsonResource = new InputStreamResource(inputStream, "beers.json");
+		} else if (filename != null && filename.endsWith(".zip")) {
+			logger.info("Decompressing ZIP file: {}", filename);
 			ZipInputStream zipinputStream = new ZipInputStream(file.getInputStream());
 			zipinputStream.getNextEntry();
-			inputStreamResource = new InputStreamResource(zipinputStream, "beers.json");
-		} else if (file.getFilename() != null
-				&& (file.getFilename().endsWith(".docx") || file.getFilename().endsWith(".pdf"))) {
-			documents = hybridDocumentService.loadDocDirect(file);
-			logger.info("Creating Embeddings...");
-
-		} else {
-
-			logger.info("Creating Embeddings...");
-
-			// Create a JSON reader with fields relevant to our use case
-			Resource resourceToUse = inputStreamResource != null ? inputStreamResource : file;
-			logger.info("Using resource: {}", resourceToUse.getDescription());
-
-			// 检查资源是否可读
-			if (!resourceToUse.exists()) {
-				logger.error("Resource does not exist: {}", resourceToUse.getDescription());
-				return null;
-			}
-
-			// 直接使用 Resource 对象，而不是获取文件路径
-			documents = hybridDocumentService.loadDocumentFromZip(resourceToUse);
-
-			logger.info("Loaded {} documents from JSON", documents.size());
-
+			jsonResource = new InputStreamResource(zipinputStream, "beers.json");
 		}
+
+		logger.info("Creating Embeddings...");
+		logger.info("Using resource: {}", jsonResource.getDescription());
+
+		// 检查资源是否可读
+		if (!jsonResource.exists()) {
+			logger.error("Resource does not exist: {}", jsonResource.getDescription());
+			return null;
+		}
+
+		// 直接使用 Resource 对象，而不是获取文件路径
+		List<Document> documents = hybridDocumentService.loadDocumentFromZip(jsonResource);
+		logger.info("Loaded {} documents from JSON", documents == null ? 0 : documents.size());
 
 		// 兜底：不管走哪条读取路径（PDF/DOCX/JSON），入库前先保证单条不超过 embedding 阈值，
 		// 避免 TokenCountBatchingStrategy 直接抛 IllegalArgumentException 把启动打断
