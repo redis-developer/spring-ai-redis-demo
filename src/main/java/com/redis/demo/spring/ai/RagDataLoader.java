@@ -1,16 +1,14 @@
 package com.redis.demo.spring.ai;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipInputStream;
 
 import com.redis.demo.spring.ai.service.DocumentCountProvider;
 import com.redis.demo.spring.ai.service.HybridDocumentService;
 import com.redis.demo.spring.ai.service.HybridSearchService;
+import com.redis.demo.spring.ai.util.TokenLimitEnforcer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -61,61 +59,6 @@ public class RagDataLoader implements ApplicationRunner {
 		this.hybridDocumentService = hybridDocumentService;
 	}
 
-	// 在RagDataLoader类中添加批次大小常量
-	private static final int BATCH_SIZE = 32;
-
-	// 在 RagDataLoader 类中添加文本处理方法
-	// 在 RagDataLoader 类中添加以下方法
-	private static final int MAX_TOKENS = 512;
-	private static final int CHARS_PER_TOKEN_ESTIMATE = 4;
-
-	// 添加处理文档内容的方法
-	private Document processDocumentContent(Document document) {
-		String content = document.getFormattedContent();
-		int originalLength = content.length();
-
-		String processedContent = truncateTextByTokens(content);
-
-		if (!processedContent.equals(content)) {
-			logger.info("Document truncated from {} to {} characters", originalLength, processedContent.length());
-		}
-
-		// 确保文档有ID
-		Map<String, Object> metadata = new HashMap<>(document.getMetadata());
-		if (!metadata.containsKey("id")) {
-			if (metadata.containsKey("name")) {
-				metadata.put("id", metadata.get("name"));
-			} else {
-				metadata.put("id", UUID.randomUUID().toString());
-			}
-		}
-
-		return new Document(processedContent, metadata);
-	}
-
-	private String truncateTextByTokens(String text) {
-		// 更保守的限制 - 使用更低的字符到token比率
-		int maxChars = 1500; // 大约375 tokens (基于1:4比率)
-
-		if (text.length() > maxChars) {
-			String truncatedText = text.substring(0, maxChars);
-			// 在句子边界截断
-			int lastPeriod = truncatedText.lastIndexOf('.');
-			int lastSpace = truncatedText.lastIndexOf(' ');
-
-			// 优先在句号后截断，其次在空格处截断
-			if (lastPeriod > 0) {
-				truncatedText = truncatedText.substring(0, lastPeriod + 1);
-			} else if (lastSpace > 0) {
-				truncatedText = truncatedText.substring(0, lastSpace);
-			}
-
-			logger.debug("Truncated text from {} to {} characters", text.length(), truncatedText.length());
-			return truncatedText;
-		}
-		return text;
-	}
-
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
 
@@ -159,7 +102,8 @@ public class RagDataLoader implements ApplicationRunner {
 
 	/**
 	 * 根据资源类型加载文档（不做向量化，不写 VectorStore）。
-	 * 从 run() 中抽取，供启动加载与运维重建共用，保证分块/ID 与写入 Milvus 时一致。
+	 * 从 run() 中抽取，供启动加载与运维重建共用，保证分块/ID 与写入 Milvus 时一致；
+	 * 出口统一过一道 token 上限守卫，Milvus 与 BM25 拿到的是同一批切块。
 	 */
 	private List<Document> readDocumentsFromResource(Resource file) throws Exception {
 		List<Document> documents = null;
@@ -201,7 +145,9 @@ public class RagDataLoader implements ApplicationRunner {
 
 		}
 
-		return documents;
+		// 兜底：不管走哪条读取路径（PDF/DOCX/JSON），入库前先保证单条不超过 embedding 阈值，
+		// 避免 TokenCountBatchingStrategy 直接抛 IllegalArgumentException 把启动打断
+		return TokenLimitEnforcer.enforceTokenLimit(documents);
 	}
 
 	/**

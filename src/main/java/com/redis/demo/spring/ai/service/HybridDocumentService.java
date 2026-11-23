@@ -10,6 +10,7 @@ import com.redis.demo.spring.ai.util.MarkdownProcessor;
 import com.redis.demo.spring.ai.util.ProcessingResult;
 import com.redis.demo.spring.ai.util.TextChunk;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -137,19 +138,7 @@ public class HybridDocumentService {
 
                 logger.info("MarkdownProcessor 分块完成: 原始{}个文档 -> 分块后{}个文档", documents.size(), splitDocs.size());
             } else {
-                // 使用 TokenTextSplitter 分块（token 算法）
-                // 学术论文优化的分块逻辑
-                // - defaultChunkSize: 800 tokens，适合论文段落的完整性
-                // - minChunkSizeChars: 350 字符，避免过小的分块
-                // - minChunkLengthToEmbed: 5，过滤过短的无意义文本
-                // - maxNumChunks: 10000，支持长论文
-                // - keepSeparator: true，保留段落分隔符维持结构
-                TokenTextSplitter splitter = new TokenTextSplitter(
-                        defaultChunkSize,
-                        minChunkSizeChars,
-                        minChunkLengthToEmbed,
-                        maxNumChunks,
-                        keepSeparator);
+                TokenTextSplitter splitter = getTokenTextSplitter();
 
                 logger.info(
                         "使用 TokenTextSplitter 切块算法: chunkSize={}, minChunkSizeChars={}, minChunkLengthToEmbed={}, maxNumChunks={}, keepSeparator={}",
@@ -162,6 +151,26 @@ public class HybridDocumentService {
             return splitDocs;
         }
         return new JsonReader(resource, RagDataLoader.KEYS).get();
+    }
+
+    private @NotNull TokenTextSplitter getTokenTextSplitter() {
+        List<Character> characterList =  List.of('.', '。', '!', '？', ';', '\n');
+        // 使用 TokenTextSplitter 分块（token 算法）
+        // 学术论文优化的分块逻辑
+        // - defaultChunkSize: 800 tokens，适合论文段落的完整性
+        // - minChunkSizeChars: 350 字符，避免过小的分块
+        // - minChunkLengthToEmbed: 5，过滤过短的无意义文本
+        // - maxNumChunks: 10000，支持长论文
+        // - keepSeparator: true，保留段落分隔符维持结构
+        // - characterList 断句边界字符表"——文本分块时，切分器优先在这些标点符号后面下刀，让每个 chunk 的结尾尽量落在完整句子上，而不是从句子中间硬切
+        TokenTextSplitter splitter = new TokenTextSplitter(
+                defaultChunkSize,
+                minChunkSizeChars,
+                minChunkLengthToEmbed,
+                maxNumChunks,
+                keepSeparator,
+                characterList);
+        return splitter;
     }
 
     public List<Document> loadDocumentFromZip(Resource resource) throws IOException {

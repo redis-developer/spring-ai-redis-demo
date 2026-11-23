@@ -12,7 +12,6 @@ public class MarkdownProcessor {
     // 默认配置常量
     private static final int DEFAULT_CHUNK_TOKEN_NUM = 128;
     private static final String DEFAULT_DELIMITER = "\n!?;。；！？";
-    private static final int DEFAULT_CHARS_PER_TOKEN = 4;
     private static final String CHUNK_TYPE_TABLE = "table";
 
     // 正则表达式模式常量
@@ -35,6 +34,8 @@ public class MarkdownProcessor {
             Pattern.MULTILINE | Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
 
     // 实例配置参数
+    // chunkTokenNum 现在按真实 token（jtokkit CL100K_BASE）计，必须显著小于
+    // TokenLimitEnforcer.STRATEGY_TOKEN_LIMIT，否则单个分块会顶穿 embedding 批处理阈值
     private int chunkTokenNum = DEFAULT_CHUNK_TOKEN_NUM;
     private String delimiter = DEFAULT_DELIMITER;
     private boolean separateTables = true;
@@ -133,7 +134,7 @@ public class MarkdownProcessor {
         for (MarkdownElement element : elements) {
             String content = element.getContent();
 
-            // 计算token数量（简化估算）
+            // 计算 token 数量（jtokkit 真实分词）
             int tokenCount = estimateTokenCount(content);
 
             if (tokenCount <= chunkTokenNum) {
@@ -151,15 +152,14 @@ public class MarkdownProcessor {
             }
         }
 
-        // 处理表格，将表格作为单独的块添加
+        // 处理表格：整张表可能远超 chunkTokenNum（HTML 标签还会放大长度），必须按行拆块
         for (String table : tables) {
             String htmlTable = convertTableToHtml(table);
-            TextChunk tableChunk = new TextChunk(
-                    htmlTable,
-                    CHUNK_TYPE_TABLE,
-                    -1,
-                    -1);
-            chunks.add(tableChunk);
+            if (estimateTokenCount(htmlTable) <= chunkTokenNum) {
+                chunks.add(new TextChunk(htmlTable, CHUNK_TYPE_TABLE, -1, -1));
+            } else {
+                chunks.addAll(splitOversizeTable(table, htmlTable));
+            }
         }
 
         return chunks;
@@ -183,30 +183,90 @@ public class MarkdownProcessor {
 
         // 解析Markdown表格内容
         List<String[]> tableData = parseMarkdownTable(markdownTable);
-        if (tableData.isEmpty()) {
+        return buildHtmlTable(tableData);
+    }
+
+    /**
+     * 将二维表格数据渲染为HTML，第一行按表头处理
+     *
+     * @param tableData 表格数据
+     * @return HTML表格字符串
+     */
+    private String buildHtmlTable(List<String[]> tableData) {
+        if (tableData == null || tableData.isEmpty()) {
             return "";
         }
+        return buildHtmlTable(tableData.get(0), tableData.subList(1, tableData.size()));
+    }
 
-        // 构建HTML表格
+    /**
+     * 用指定表头 + 数据行渲染HTML表格，便于大表按行拆块时每组都带上表头
+     */
+    private String buildHtmlTable(String[] header, List<String[]> dataRows) {
         StringBuilder html = new StringBuilder();
         html.append("<table>\n");
-
-        for (int i = 0; i < tableData.size(); i++) {
-            String[] row = tableData.get(i);
-            html.append("  <tr>\n");
-
-            for (String cell : row) {
-                String tag = (i == 0) ? "th" : "td"; // 第一行默认为表头
-                html.append("    <").append(tag).append(">")
-                        .append(escapeHtml(cell.trim()))
-                        .append("</").append(tag).append(">\n");
-            }
-
-            html.append("  </tr>\n");
+        html.append(buildHtmlRow(header, true));
+        for (String[] row : dataRows) {
+            html.append(buildHtmlRow(row, false));
         }
-
         html.append("</table>");
         return html.toString();
+    }
+
+    private String buildHtmlRow(String[] row, boolean isHeader) {
+        StringBuilder html = new StringBuilder("  <tr>\n");
+        for (String cell : row) {
+            String tag = isHeader ? "th" : "td";
+            html.append("    <").append(tag).append(">")
+                    .append(escapeHtml(cell.trim()))
+                    .append("</").append(tag).append(">\n");
+        }
+        return html.append("  </tr>\n").toString();
+    }
+
+    /**
+     * 把超大的表格按数据行拆成多个表格块，每块重复表头；
+     * 单行本身仍超限时退回通用 token 硬切分，保证不会有整张表原样进 embedding
+     */
+    private List<TextChunk> splitOversizeTable(String markdownTable, String htmlTable) {
+        List<String[]> tableData = parseMarkdownTable(markdownTable);
+        if (tableData.size() < 2) {
+            return hardSplitChunks(htmlTable, CHUNK_TYPE_TABLE);
+        }
+
+        String[] header = tableData.get(0);
+        List<TextChunk> chunks = new ArrayList<>();
+        List<String[]> group = new ArrayList<>();
+        for (int i = 1; i < tableData.size(); i++) {
+            group.add(tableData.get(i));
+            if (estimateTokenCount(buildHtmlTable(header, group)) <= chunkTokenNum) {
+                continue;
+            }
+            if (group.size() == 1) {
+                chunks.addAll(hardSplitChunks(buildHtmlTable(header, group), CHUNK_TYPE_TABLE));
+                group = new ArrayList<>();
+                continue;
+            }
+            String[] overflow = group.remove(group.size() - 1);
+            chunks.add(new TextChunk(buildHtmlTable(header, group), CHUNK_TYPE_TABLE, -1, -1));
+            group = new ArrayList<>();
+            group.add(overflow);
+        }
+        if (!group.isEmpty()) {
+            chunks.add(new TextChunk(buildHtmlTable(header, group), CHUNK_TYPE_TABLE, -1, -1));
+        }
+        return chunks;
+    }
+
+    /**
+     * 按 chunkTokenNum 对任意内容做兜底切分，产出的块统一带上指定类型
+     */
+    private List<TextChunk> hardSplitChunks(String content, String type) {
+        List<TextChunk> chunks = new ArrayList<>();
+        for (String piece : TokenLimitEnforcer.splitToTokenLimit(content, chunkTokenNum, delimiter)) {
+            chunks.add(new TextChunk(piece, type, -1, -1));
+        }
+        return chunks;
     }
 
     /**
@@ -283,7 +343,9 @@ public class MarkdownProcessor {
     }
 
     /**
-     * 将过长的内容进行分割
+     * 将过长的内容进行分割。
+     * 切分优先落在句子/块边界上，并且保证每个块都不超过 chunkTokenNum；
+     * 旧实现把 delimiter 整串 Pattern.quote 成字面量，导致切分永不命中、整段原样成块。
      *
      * @param content         内容文本
      * @param originalElement 原始元素信息，用于保留元数据
@@ -291,56 +353,25 @@ public class MarkdownProcessor {
      */
     private List<TextChunk> splitContent(String content, MarkdownElement originalElement) {
         List<TextChunk> chunks = new ArrayList<>();
-
-        // 按分隔符进行语义分割
-        String[] parts = content.split("(?<=" + Pattern.quote(delimiter) + ")");
-
-        StringBuilder currentChunk = new StringBuilder();
-        int currentTokens = 0;
-
-        for (String part : parts) {
-            int partTokens = estimateTokenCount(part);
-
-            // 如果当前块加上新部分未超过限制，则累加
-            if (currentTokens + partTokens <= chunkTokenNum) {
-                currentChunk.append(part);
-                currentTokens += partTokens;
-            } else {
-                // 否则保存当前块，并开始新块
-                if (currentChunk.length() > 0) {
-                    chunks.add(new TextChunk(
-                            currentChunk.toString().trim(),
-                            originalElement.getType(),
-                            originalElement.getStartLine(),
-                            originalElement.getEndLine()));
-                }
-                currentChunk = new StringBuilder(part);
-                currentTokens = partTokens;
-            }
-        }
-
-        // 处理最后剩余的部分
-        if (currentChunk.length() > 0) {
+        for (String piece : TokenLimitEnforcer.splitToTokenLimit(content, chunkTokenNum, delimiter)) {
             chunks.add(new TextChunk(
-                    currentChunk.toString().trim(),
+                    piece,
                     originalElement.getType(),
                     originalElement.getStartLine(),
                     originalElement.getEndLine()));
         }
-
         return chunks;
     }
 
     /**
-     * 估算文本的Token数量
+     * 估算文本的Token数量。
+     * 与入库守卫、TokenCountBatchingStrategy 同口径（jtokkit CL100K_BASE 真实分词）；
+     * 旧实现用 length()/4，对中文、公式和HTML表格严重低估，是超限报错的根因之一。
      *
      * @param text 输入文本
      * @return 估算的Token数
      */
     private int estimateTokenCount(String text) {
-        // 简化的token计算：假设平均每4个字符为一个Token
-        // 实际应用中建议使用更精确的Tokenizer
-        return text.length() / DEFAULT_CHARS_PER_TOKEN;
+        return TokenLimitEnforcer.countTokens(text);
     }
-
 }

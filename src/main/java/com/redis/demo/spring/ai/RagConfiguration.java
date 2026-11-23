@@ -14,8 +14,9 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.embedding.TokenCountBatchingStrategy;
 import org.springframework.ai.ollama.OllamaEmbeddingModel;
 import org.springframework.ai.ollama.api.OllamaApi;
-import org.springframework.ai.ollama.api.OllamaOptions;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.ollama.api.OllamaChatOptions;
+import org.springframework.ai.ollama.api.OllamaEmbeddingOptions;
 import org.springframework.ai.ollama.management.ModelManagementOptions;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.milvus.MilvusVectorStore;
@@ -63,7 +64,7 @@ public class RagConfiguration {
             @Value("${spring.ai.ollama.embedding.options.model}") String model) {
         OllamaApi ollamaApi = OllamaApi.builder().baseUrl(baseUrl).build();
         return new OllamaEmbeddingModel(ollamaApi,
-                OllamaOptions.builder().model(model).build(),
+                OllamaEmbeddingOptions.builder().model(model).build(),
                 ObservationRegistry.create(),
                 ModelManagementOptions.builder().timeout(Duration.ofSeconds(30)).build());
     }

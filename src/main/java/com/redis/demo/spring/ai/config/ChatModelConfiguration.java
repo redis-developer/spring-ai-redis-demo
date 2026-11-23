@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaApi;
-import org.springframework.ai.ollama.api.OllamaOptions;
+import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.ai.ollama.management.ModelManagementOptions;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -57,7 +57,7 @@ public class ChatModelConfiguration {
         logger.info("Initializing OllamaChatModel with model: {}", model);
         return OllamaChatModel.builder()
                 .ollamaApi(ollamaApi)
-                .defaultOptions(OllamaOptions.builder().model(model).build())
+                .defaultOptions(OllamaChatOptions.builder().model(model).build())
                 .observationRegistry(ObservationRegistry.create())
                 .modelManagementOptions(ModelManagementOptions.builder()
                         .timeout(readTimeout)
