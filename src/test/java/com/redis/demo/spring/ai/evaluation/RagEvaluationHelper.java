@@ -1,7 +1,8 @@
 package com.redis.demo.spring.ai.evaluation;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.springframework.core.io.Resource;
 import org.springframework.util.FileCopyUtils;
 
@@ -13,7 +14,7 @@ import java.util.Map;
 
 public class RagEvaluationHelper {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = JsonMapper.builder().build();
 
     public static List<TestCase> loadTestCases(Resource resource) {
         try {

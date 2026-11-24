@@ -5,6 +5,7 @@ import com.redis.demo.spring.ai.service.BM25SearchService;
 import com.redis.demo.spring.ai.service.HybridSearchService;
 import com.redis.demo.spring.ai.service.RagService;
 import com.redis.demo.spring.ai.service.RerankService;
+import com.redis.demo.spring.ai.util.OllamaRestClientFactory;
 import io.micrometer.observation.ObservationRegistry;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.param.ConnectParam;
@@ -22,7 +23,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.milvus.MilvusVectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.web.client.RestClientCustomizer;
+import org.springframework.boot.restclient.RestClientCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -58,11 +59,25 @@ public class RagConfiguration {
         return restClientBuilder -> restClientBuilder.requestFactory(requestFactory);
     }
 
+    /**
+     * Ollama embedding 模型。
+     *
+     * 注意：OllamaApi 内部使用的是静态 RestClient.builder()，不经过容器里的
+     * restClientCustomizer；Boot 4.2 起该默认工厂变为 Reactor Netty 并附带约 10s 读超时，
+     * 而本地 bge-m3 一次批量 embed 就要 40s 以上，会把 RagDataLoader 的启动向量化直接打断。
+     * 因此这里显式注入带超时的 RestClient.Builder，embedding 读超时默认放宽到 300s
+     * （它不在 /chat 请求路径上，不影响 60s &lt; 65s &lt; 90s 的聊天超时层级）。
+     */
     @Bean
     public EmbeddingModel embeddingModel(
             @Value("${spring.ai.ollama.base-url}") String baseUrl,
-            @Value("${spring.ai.ollama.embedding.options.model}") String model) {
-        OllamaApi ollamaApi = OllamaApi.builder().baseUrl(baseUrl).build();
+            @Value("${spring.ai.ollama.embedding.options.model}") String model,
+            @Value("${spring.ai.ollama.embedding.connect-timeout:10s}") Duration connectTimeout,
+            @Value("${spring.ai.ollama.embedding.read-timeout:300s}") Duration readTimeout) {
+        OllamaApi ollamaApi = OllamaApi.builder()
+                .baseUrl(baseUrl)
+                .restClientBuilder(OllamaRestClientFactory.restClientBuilder(connectTimeout, readTimeout))
+                .build();
         return new OllamaEmbeddingModel(ollamaApi,
                 OllamaEmbeddingOptions.builder().model(model).build(),
                 ObservationRegistry.create(),

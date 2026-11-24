@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.15</version>
+        <version>4.2.0</version>
         <relativePath /> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.redis.demo</groupId>
@@ -16,12 +16,14 @@
     <description>Simple AI application using Milvus vector search</description>
     <properties>
         <java.version>17</java.version>
-        <spring-ai.version>1.1.8</spring-ai.version>
+        <spring-ai.version>2.1.0</spring-ai.version>
         <frontend-maven-plugin.version>1.15.0</frontend-maven-plugin.version>
         <node.version>v18.16.0</node.version>
         <npm.version>9.5.1</npm.version>
         <!-- 添加 protobuf 版本属性 -->
         <protobuf.version>4.29.3</protobuf.version>
+        <!-- Boot 4.2.0 BOM 不再管理 Testcontainers 版本，显式钉住一致版本 -->
+        <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
     <!-- tag::dependencies[] -->
     <dependencies>
@@ -45,6 +47,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Boot 4.2 将 @WebMvcTest 等 Web 切片拆到独立模块，需显式引入 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -130,13 +139,6 @@
             <artifactId>protobuf-java</artifactId>
             <version>${protobuf.version}</version>
         </dependency>
-
-        <!-- 显式添加 protobuf 依赖解决版本冲突 -->
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
-            <version>${protobuf.version}</version>
-        </dependency>
         
         <!-- 显式添加 commons-io 依赖解决版本冲突 -->
         <dependency>
@@ -148,11 +150,13 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -181,7 +185,7 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.8</version>
+				<version>0.8.16</version>
 				<executions>
 					<execution>
 						<goals>
@@ -198,11 +202,10 @@
 				</executions>
 			</plugin>
 			
-			<!-- Surefire 插件用于单元测试 -->
+			<!-- Surefire 插件用于单元测试（版本由 Boot 4.2.0 父 POM 管理 3.6.1） -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.0.0-M9</version>
 				<configuration>
 					<includes>
 						<include>**/*Test.java</include>
@@ -210,11 +213,10 @@
 				</configuration>
 			</plugin>
 			
-			<!-- Failsafe 插件用于集成测试 -->
+			<!-- Failsafe 插件用于集成测试（版本由 Boot 4.2.0 父 POM 管理 3.6.1） -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
-				<version>3.0.0-M9</version>
 				<configuration>
 					<includes>
 						<include>**/*IT.java</include>

@@ -16,8 +16,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Rerank 服务
@@ -59,7 +60,7 @@ public class RerankService {
         requestFactory.setConnectTimeout(CONNECT_TIMEOUT_MILLIS);
         requestFactory.setReadTimeout(READ_TIMEOUT_MILLIS);
         this.restTemplate = new RestTemplate(requestFactory);
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = JsonMapper.builder().build();
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
             logger.warn("Siliconflow API Key is empty! Please set SILICONFLOW_KEY environment variable.");

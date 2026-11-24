@@ -8,7 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.springframework.ai.vectorstore.milvus.MilvusVectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -36,7 +36,7 @@ class RagDataLoaderIntegrationTest {
     @Autowired
     private RagDataLoader ragDataLoader;
 
-    @MockBean
+    @MockitoBean
     private MilvusVectorStore milvusVectorStore;
 
     @DynamicPropertySource

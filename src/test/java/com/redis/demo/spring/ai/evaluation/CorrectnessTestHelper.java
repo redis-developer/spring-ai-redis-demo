@@ -1,6 +1,7 @@
 package com.redis.demo.spring.ai.evaluation;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.springframework.core.io.Resource;
 import org.springframework.util.FileCopyUtils;
 
@@ -15,7 +16,7 @@ import java.util.List;
  */
 public class CorrectnessTestHelper {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = JsonMapper.builder().build();
 
     /**
      * 从资源文件加载正确性测试用例

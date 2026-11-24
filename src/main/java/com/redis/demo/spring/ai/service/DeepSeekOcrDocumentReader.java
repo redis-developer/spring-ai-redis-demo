@@ -32,7 +32,7 @@ import org.apache.pdfbox.rendering.PDFRenderer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -40,8 +40,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * DeepSeek-OCR Document Reader
@@ -126,13 +127,13 @@ public class DeepSeekOcrDocumentReader {
     public DeepSeekOcrDocumentReader(String apiKey, String model) {
         this.apiKey = apiKey;
         this.model = model;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = JsonMapper.builder().build();
         this.executorService = Executors.newFixedThreadPool(PARALLEL_THREADS);
 
         // 配置带超时的 RestTemplate
         this.restTemplate = new RestTemplateBuilder()
-                .setConnectTimeout(Duration.ofSeconds(30))
-                .setReadTimeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS))
+                .connectTimeout(Duration.ofSeconds(30))
+                .readTimeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS))
                 .build();
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
