@@ -11,6 +11,7 @@ import org.springframework.ai.ollama.management.ModelManagementOptions;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -51,6 +52,7 @@ public class ChatModelConfiguration {
     @ConditionalOnProperty(name = "chat.provider", havingValue = "ollama", matchIfMissing = true)
     public ChatModel ollamaChatModel(
             OllamaApi ollamaApi,
+            ObjectProvider<ObservationRegistry> observationRegistry,   // ← 注入容器里的 registry
             @Value("${spring.ai.ollama.chat.options.model}") String model,
             @Value("${spring.ai.ollama.connection-timeout:60s}") Duration connectionTimeout,
             @Value("${spring.ai.ollama.read-timeout:60s}") Duration readTimeout) {
@@ -58,7 +60,7 @@ public class ChatModelConfiguration {
         return OllamaChatModel.builder()
                 .ollamaApi(ollamaApi)
                 .defaultOptions(OllamaChatOptions.builder().model(model).build())
-                .observationRegistry(ObservationRegistry.create())
+                .observationRegistry(observationRegistry.getIfUnique(() -> ObservationRegistry.NOOP))  // ← 关键
                 .modelManagementOptions(ModelManagementOptions.builder()
                         .timeout(readTimeout)
                         .build())
@@ -97,6 +99,7 @@ public class ChatModelConfiguration {
     @ConditionalOnProperty(name = "chat.provider", havingValue = "openai")
     public ChatModel openAiChatModel(
             OpenAiApi openAiApi,
+            ObjectProvider<ObservationRegistry> observationRegistry,   // ← 注入容器里的 registry
             @Value("${spring.ai.openai.chat.options.model:gpt-4o-mini}") String model,
             @Value("${spring.ai.openai.chat.options.temperature:0.7}") Double temperature) {
         logger.info("Initializing OpenAiChatModel with model: {}, temperature: {}", model, temperature);
@@ -106,6 +109,7 @@ public class ChatModelConfiguration {
                         .model(model)
                         .temperature(temperature)
                         .build())
+                .observationRegistry(observationRegistry.getIfUnique(() -> ObservationRegistry.NOOP))  // ← 关键
                 .build();
     }
 }

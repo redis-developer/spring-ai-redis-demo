@@ -58,6 +58,15 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
+        </dependency>
+
             <dependency>
                 <groupId>org.apache.poi</groupId>
                 <artifactId>poi-ooxml</artifactId>
@@ -146,6 +155,8 @@
             <artifactId>testcontainers</artifactId>
             <scope>test</scope>
         </dependency>
+
+
     </dependencies>
     <!-- end::dependencies[] -->
     <dependencyManagement>
