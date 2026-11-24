@@ -4,7 +4,7 @@ English | [简体中文](ReadMe_Zhcn.md)
 
 [![zread](https://img.shields.io/badge/Ask_Zread-_.svg?style=flat&color=00b0aa&labelColor=000000&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQuOTYxNTYgMS42MDAxSDIuMjQxNTZDMS44ODgxIDEuNjAwMSAxLjYwMTU2IDEuODg2NjQgMS42MDE1NiAyLjI0MDFWNC45NjAxQzEuNjAxNTYgNS4zMTM1NiAxLjg4ODEgNS42MDAxIDIuMjQxNTYgNS42MDAxSDQuOTYxNTZDNS4zMTUwMiA1LjYwMDEgNS42MDE1NiA1LjMxMzU2IDUuNjAxNTYgNC45NjAxVjIuMjQwMUM1LjYwMTU2IDEuODg2NjQgNS4zMTUwMiAxLjYwMDEgNC45NjE1NiAxLjYwMDFaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00Ljk2MTU2IDEwLjM5OTlIMi4yNDE1NkMxLjg4ODEgMTAuMzk5OSAxLjYwMTU2IDEwLjY4NjQgMS42MDE1NiAxMS4wMzk5VjEzLjc1OTlDMS42MDE1NiAxNC4xMTM0IDEuODg4MSAxNC4zOTk5IDIuMjQxNTYgMTQuMzk5OUg0Ljk2MTU2QzUuMzE1MDIgMTQuMzk5OSA1LjYwMTU2IDE0LjExMzQgNS42MDE1NiAxMy43NTk5VjExLjAzOTlDNS42MDE1NiAxMC42ODY0IDUuMzE1MDIgMTAuMzk5OSA0Ljk2MTU2IDEwLjM5OTlaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik0xMy43NTg0IDEuNjAwMUgxMS4wMzg0QzEwLjY4NSAxLjYwMDEgMTAuMzk4NCAxLjg4NjY0IDEwLjM5ODQgMi4yNDAxVjQuOTYwMUMxMC4zOTg0IDUuMzEzNTYgMTAuNjg1IDUuNjAwMSAxMS4wMzg0IDUuNjAwMUgxMy43NTg0QzE0LjExMTkgNS42MDAxIDE0LjM5ODQgNS4zMTM1NiAxNC4zOTg0IDQuOTYwMVYyLjI0MDFDMTQuMzk4NCAxLjg4NjY0IDE0LjExMTkgMS42MDAxIDEzLjc1ODQgMS42MDAxWiIgZmlsbD0iI2ZmZiIvPgo8cGF0aCBkPSJNNCAxMkwxMiA0TDQgMTJaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00IDEyTDEyIDQiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K&logoColor=ffffff)](https://zread.ai/megadotnet/spring-ai-redis-demo)
 
-This project is a Retrieval-Augmented Generation (RAG) demonstration application based on Spring Boot 3.2.3 and Spring AI 1.0.0. It integrates the Milvus vector database and Large Language Models (LLMs) to provide an intelligent question-answering system for knowledge documents.
+This project is a Retrieval-Augmented Generation (RAG) demonstration application based on Spring Boot 4.2.0 and Spring AI 2.1.0. It integrates the Milvus vector database and Large Language Models (LLMs) to provide an intelligent question-answering system for knowledge documents.
 
 ---
 
@@ -26,8 +26,8 @@ The following details the specific technology selections, their versions, and co
 | Technology/Component | Version | Core Role Description |
 | --- | --- | --- |
 | **Java** | `17` | The core backend programming language, providing strong ecosystem support and performance guarantees. |
-| **Spring Boot** | `3.2.3` | Application scaffolding, enabling auto-configuration and rapid construction of production-grade RESTful API services. |
-| **Spring AI** | `1.0.0` | Unified abstraction for interacting with LLMs and vector databases, supporting Ollama, OpenAI, and Milvus. |
+| **Spring Boot** | `4.2.0` | Application scaffolding, enabling auto-configuration and rapid construction of production-grade RESTful API services. |
+| **Spring AI** | `2.1.0` | Unified abstraction for interacting with LLMs and vector databases, supporting Ollama, OpenAI, and Milvus. |
 | **Apache Lucene** | `9.11.1` | Powerful text search engine library, used to implement localized, high-performance BM25 keyword search. |
 | **Apache POI** | `5.2.3` | Office document parsing library (`poi` and `poi-ooxml`), assisting in parsing imported structured documents. |
 
@@ -35,7 +35,7 @@ The following details the specific technology selections, their versions, and co
 
 | Technology/Component | Version | Core Role Description |
 | --- | --- | --- |
-| **Milvus** | Latest Stable | High-performance vector database, storing high-dimensional embeddings and implementing fast Top-K semantic similarity search. |
+| **Milvus** | Client SDK `2.6.21` | High-performance vector database, storing high-dimensional embeddings and implementing fast Top-K semantic similarity search. The `milvus-sdk-java` client is provided transitively by `spring-ai-starter-vector-store-milvus`; `docker-compose.yml` deploys the `milvusdb/milvus:v2.6.7` standalone stack (etcd + MinIO + standalone), which is also the image the Testcontainers integration test uses. |
 | **Redis** | Redis Stack Server | Used as a high-performance KV cache, and through Spring Data Redis, it persists the BM25 full-text index, supporting index recovery after application restarts. |
 | **Ollama** | Latest Stable | Locally run LLM engine, used to execute language models like `qwen2.5:0.5b` and embedding models like `bge-m3:latest`. |
 
@@ -43,11 +43,12 @@ The following details the specific technology selections, their versions, and co
 
 | Technology/Component | Version | Core Role Description |
 | --- | --- | --- |
-| **Maven** | `3.6+` | Backend project dependency management and build tool. |
+| **Maven** | `3.6.3+` | Backend project dependency management and build tool. |
 | **Node.js & npm** | Node `v18.16.0`+, npm `9.5.1`+ | Frontend runtime environment and package management tool. |
 | **Frontend Maven Plugin**| `1.15.0` | Automatically builds the frontend project during the Maven build lifecycle (e.g., downloading Node and executing `npm run build`). |
 | **Docker & Compose** | `20+` | Containerization technology, orchestrating the deployment environment of Redis, Milvus, and the application itself to resolve dependency conflicts. |
-| **JaCoCo** | `0.8.8` | Code coverage tool, generating statistical reports during the testing phase to ensure code quality. |
+| **JaCoCo** | `0.8.16` | Code coverage tool, generating statistical reports during the testing phase to ensure code quality. |
+| **Testcontainers** | `1.21.4` | Test-scope container runtime for the Milvus integration test. Spring Boot 4.2.0 no longer manages this version, so it is pinned explicitly in `pom.xml`. |
 
 ---
 
@@ -123,9 +124,13 @@ The Embedding Model is currently independent of `chat.provider` and always uses 
 ```properties
 spring.ai.ollama.base-url=http://127.0.0.1:11434
 spring.ai.ollama.embedding.options.model=bge-m3:latest
+spring.ai.ollama.embedding.connect-timeout=10s
+spring.ai.ollama.embedding.read-timeout=300s
 ```
 
 This means document ingestion and user query embedding are sent to Ollama on `127.0.0.1:11434`. Change `spring.ai.ollama.base-url` when Ollama runs in a container or on another host.
+
+Since Spring Boot 4.2, the default request factory behind `OllamaApi` is Reactor Netty, which applies an effective read timeout of about 10 seconds, so the embedding timeouts above are set explicitly instead of relying on `spring.ai.ollama.read-timeout`.
 
 ```bash
 ollama pull bge-m3:latest
@@ -173,7 +178,7 @@ It also uses `SILICONFLOW_KEY`. PDF pages are rendered locally, sent as Base64 J
 
 To avoid environmental conflicts, please ensure your development and runtime environments meet the following minimum compatible versions:
 
-* **Java**: `JDK 17` or higher
+* **Java**: `JDK 17` or higher (the minimum required by Spring Boot 4.2; the `Dockerfile` runtime image is Eclipse Temurin 21)
 * **Maven**: `3.6.3` or higher
 * **Node.js**: `v18.16.0` or higher (LTS version recommended)
 * **npm**: `9.5.1` or higher
@@ -194,6 +199,25 @@ Use Docker Compose to start the dependency components with one click:
 cd spring-ai-redis-demo
 docker-compose up -d
 ```
+
+The Compose file ships the Milvus v2.6.7 standalone stack next to Redis:
+
+| Service | Image | Ports |
+| --- | --- | --- |
+| `etcd` | `quay.io/coreos/etcd:v3.5.5` | `2379` (compose network only) |
+| `minio` | `minio/minio:RELEASE.2023-03-20T20-16-18Z` | `9000` (S3) / `9001` (console) |
+| `standalone` | `milvusdb/milvus:v2.6.7` | `19530` (gRPC) / `9091` (metrics) |
+
+To start only the vector database:
+
+```bash
+docker-compose up -d etcd minio standalone
+docker-compose logs -f standalone
+```
+
+`standalone` has no healthcheck, so `docker-compose ps` only reports `running`; wait until port `19530` is actually listening before launching the backend.
+
+Set `spring.ai.vectorstore.milvus.client.host` to `127.0.0.1` when the backend runs on the host, or to the service name `standalone` when it runs inside this compose network (the `spring` service already overrides it through `SPRING_AI_VECTORSTORE_MILVUS_CLIENT_HOST`). The port is fixed at `19530` in `RagConfiguration`. Image mirrors, data volumes, credentials, and cleanup steps are documented in [DOCKER-README.md](DOCKER-README.md).
 
 ### 2. Download and Run Local Models (Ollama)
 
@@ -304,7 +328,7 @@ spring-ai-redis-demo/
 
 2. **Milvus Connection Refused**
     - **Symptom**: Backend throws `Failed to connect to Milvus` exception upon startup.
-    - **Solution**: Check if Docker Compose is fully started (`docker ps` to ensure milvus status is `healthy` or `running`); if deployed remotely, ensure the `host` IP in `application.properties` is reachable.
+    - **Solution**: Check if Docker Compose is fully started (`docker ps` to ensure milvus status is `healthy` or `running`); the `standalone` container needs extra time before it serves `19530`, so inspect `docker-compose logs standalone` as well. If the Milvus server is deployed elsewhere, make sure `spring.ai.vectorstore.milvus.client.host` in `application.properties` points to that reachable address.
 
 3. **Ollama model pull failed or timed out**
     - **Symptom**: Backend logs indicate model call timeout or 404 during conversation.

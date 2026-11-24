@@ -3,7 +3,7 @@
 [English](README.md) | 简体中文
 [![zread](https://img.shields.io/badge/Ask_Zread-_.svg?style=flat&color=00b0aa&labelColor=000000&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQuOTYxNTYgMS42MDAxSDIuMjQxNTZDMS44ODgxIDEuNjAwMSAxLjYwMTU2IDEuODg2NjQgMS42MDE1NiAyLjI0MDFWNC45NjAxQzEuNjAxNTYgNS4zMTM1NiAxLjg4ODEgNS42MDAxIDIuMjQxNTYgNS42MDAxSDQuOTYxNTZDNS4zMTUwMiA1LjYwMDEgNS42MDE1NiA1LjMxMzU2IDUuNjAxNTYgNC45NjAxVjIuMjQwMUM1LjYwMTU2IDEuODg2NjQgNS4zMTUwMiAxLjYwMDEgNC45NjE1NiAxLjYwMDFaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00Ljk2MTU2IDEwLjM5OTlIMi4yNDE1NkMxLjg4ODEgMTAuMzk5OSAxLjYwMTU2IDEwLjY4NjQgMS42MDE1NiAxMS4wMzk5VjEzLjc1OTlDMS42MDE1NiAxNC4xMTM0IDEuODg4MSAxNC4zOTk5IDIuMjQxNTYgMTQuMzk5OUg0Ljk2MTU2QzUuMzE1MDIgMTQuMzk5OSA1LjYwMTU2IDE0LjExMzQgNS42MDE1NiAxMy43NTk5VjExLjAzOTlDNS42MDE1NiAxMC42ODY0IDUuMzE1MDIgMTAuMzk5OSA0Ljk2MTU2IDEwLjM5OTlaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik0xMy43NTg0IDEuNjAwMUgxMS4wMzg0QzEwLjY4NSAxLjYwMDEgMTAuMzk4NCAxLjg4NjY0IDEwLjM5ODQgMi4yNDAxVjQuOTYwMUMxMC4zOTg0IDUuMzEzNTYgMTAuNjg1IDUuNjAwMSAxMS4wMzg0IDUuNjAwMUgxMy43NTg0QzE0LjExMTkgNS42MDAxIDE0LjM5ODQgNS4zMTM1NiAxNC4zOTg0IDQuOTYwMVYyLjI0MDFDMTQuMzk4NCAxLjg4NjY0IDE0LjExMTkgMS42MDAxIDEzLjc1ODQgMS42MDAxWiIgZmlsbD0iI2ZmZiIvPgo8cGF0aCBkPSJNNCAxMkwxMiA0TDQgMTJaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00IDEyTDEyIDQiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K&logoColor=ffffff)](https://zread.ai/megadotnet/spring-ai-redis-demo)
 
-本项目是一个基于 Spring Boot 3.2.3 和 Spring AI 1.0.0 的检索增强生成（RAG）演示应用，结合了 Milvus 向量数据库和大型语言模型（LLM），实现面向领域知识文档的智能问答。
+本项目是一个基于 Spring Boot 4.2.0 和 Spring AI 2.1.0 的检索增强生成（RAG）演示应用，结合了 Milvus 向量数据库和大型语言模型（LLM），实现面向领域知识文档的智能问答。
 
 ---
 
@@ -25,8 +25,8 @@
 | 技术/组件 | 版本号 | 核心作用说明 |
 | --- | --- | --- |
 | **Java** | `17` | 后端核心开发语言，提供强大的生态支持和性能保障。 |
-| **Spring Boot** | `3.2.3` | 应用脚手架，实现自动装配、快速构建生产级 RESTful API 服务。 |
-| **Spring AI** | `1.0.0` | 统一抽象 LLM 和向量数据库交互，支持 Ollama、OpenAI 及 Milvus。 |
+| **Spring Boot** | `4.2.0` | 应用脚手架，实现自动装配、快速构建生产级 RESTful API 服务。 |
+| **Spring AI** | `2.1.0` | 统一抽象 LLM 和向量数据库交互，支持 Ollama、OpenAI 及 Milvus。 |
 | **Apache Lucene** | `9.11.1` | 强大的文本搜索引擎库，用于实现本地化高性能的 BM25 关键词检索。 |
 | **Apache POI** | `5.2.3` | 办公文档解析库（`poi` 及 `poi-ooxml`），辅助解析导入的结构化文档。 |
 
@@ -34,7 +34,7 @@
 
 | 技术/组件 | 版本号 | 核心作用说明 |
 | --- | --- | --- |
-| **Milvus** | 最新稳定版 | 高性能向量数据库，存储高维嵌入向量（Embeddings）并实现快速的 Top-K 语义相似度搜索。 |
+| **Milvus** | 客户端 SDK `2.6.21` | 高性能向量数据库，存储高维嵌入向量（Embeddings）并实现快速的 Top-K 语义相似度搜索。`milvus-sdk-java` 由 `spring-ai-starter-vector-store-milvus` 传递引入；`docker-compose.yml` 部署的是 `milvusdb/milvus:v2.6.7` 单机版（etcd + MinIO + standalone），Testcontainers 集成测试也用同一镜像。 |
 | **Redis** | Redis Stack Server | 用作高性能 KV 缓存，并借助 Spring Data Redis 持久化 BM25 全文索引，支持应用重启后的索引恢复。 |
 | **Ollama** | 最新稳定版 | 本地运行的 LLM 引擎，用于执行 `qwen2.5:0.5b` 等语言模型及 `bge-m3:latest` 等嵌入模型。 |
 
@@ -42,11 +42,12 @@
 
 | 技术/组件 | 版本号 | 核心作用说明 |
 | --- | --- | --- |
-| **Maven** | `3.6+` | 后端项目依赖管理及构建工具。 |
+| **Maven** | `3.6.3+` | 后端项目依赖管理及构建工具。 |
 | **Node.js & npm** | Node `v18.16.0`+, npm `9.5.1`+ | 前端运行环境及包管理工具。 |
 | **Frontend Maven Plugin** | `1.15.0` | 在 Maven 构建生命周期中自动构建前端项目（如下载 Node 并执行 `npm run build`）。 |
 | **Docker & Compose** | `20+` | 容量化技术，统一编排 Redis、Milvus、应用本身等组件的部署环境，解决依赖冲突问题。 |
-| **JaCoCo** | `0.8.8` | 代码覆盖率工具，在测试阶段生成统计报告，保障代码质量。 |
+| **JaCoCo** | `0.8.16` | 代码覆盖率工具，在测试阶段生成统计报告，保障代码质量。 |
+| **Testcontainers** | `1.21.4` | 集成测试用的容器运行时（Milvus 容器测试）。Spring Boot 4.2.0 不再统一管理该版本，已在 `pom.xml` 中显式钉住。 |
 
 ---
 
@@ -122,9 +123,13 @@ Embedding Model 当前不受 `chat.provider` 影响，始终使用 Ollama：
 ```properties
 spring.ai.ollama.base-url=http://127.0.0.1:11434
 spring.ai.ollama.embedding.options.model=bge-m3:latest
+spring.ai.ollama.embedding.connect-timeout=10s
+spring.ai.ollama.embedding.read-timeout=300s
 ```
 
 文档入库和用户查询向量化都会调用 `127.0.0.1:11434` 上的 Ollama。若 Ollama 部署在 Docker 容器或其他主机，请修改 `spring.ai.ollama.base-url`。
+
+从 Spring Boot 4.2 起，`OllamaApi` 内部的默认请求工厂变为 Reactor Netty，带来约 10 秒的有效读超时，因此上述 embedding 超时需显式设置，而不能依赖 `spring.ai.ollama.read-timeout`。
 
 ```bash
 ollama pull bge-m3:latest
@@ -172,7 +177,7 @@ deepseek-ocr.model=deepseek-ai/DeepSeek-OCR
 
 为了避免环境冲突，请确保您的开发和运行环境满足以下最低兼容版本：
 
-* **Java**：`JDK 17` 及以上
+* **Java**：`JDK 17` 及以上（Spring Boot 4.2 的最低要求；`Dockerfile` 运行镜像为 Eclipse Temurin 21）
 * **Maven**：`3.6.3` 及以上
 * **Node.js**：`v18.16.0` 及以上（推荐 LTS 版本）
 * **npm**：`9.5.1` 及以上
@@ -193,6 +198,25 @@ deepseek-ocr.model=deepseek-ai/DeepSeek-OCR
 cd spring-ai-redis-demo
 docker-compose up -d
 ```
+
+Compose 文件已在 Redis 旁内置 Milvus v2.6.7 单机版所需的三个容器：
+
+| 服务 | 镜像 | 端口 |
+| --- | --- | --- |
+| `etcd` | `quay.io/coreos/etcd:v3.5.5` | `2379`（仅 compose 网络内访问） |
+| `minio` | `minio/minio:RELEASE.2023-03-20T20-16-18Z` | `9000`（S3）/ `9001`（控制台） |
+| `standalone` | `milvusdb/milvus:v2.6.7` | `19530`（gRPC）/ `9091`（metrics） |
+
+若只需先启动向量数据库：
+
+```bash
+docker-compose up -d etcd minio standalone
+docker-compose logs -f standalone
+```
+
+`standalone` 没有配置 healthcheck，`docker-compose ps` 只会显示 `running`；请等到 `19530` 端口真正监听后再启动后端。
+
+后端在宿主机运行时，`spring.ai.vectorstore.milvus.client.host` 填 `127.0.0.1`；跑在同一 compose 网络内时填服务名 `standalone`（`spring` 服务已通过 `SPRING_AI_VECTORSTORE_MILVUS_CLIENT_HOST` 覆盖）。端口在 `RagConfiguration` 中固定为 `19530`。镜像源 retag、数据卷与安全提示、停止清理步骤详见 [DOCKER-README.md](DOCKER-README.md)。
 
 ### 2. 下载并运行本地模型（Ollama）
 
@@ -303,7 +327,7 @@ spring-ai-redis-demo/
 
 2. **Milvus 连接被拒绝 / Connection Refused**
     - **问题表现**：后端启动时抛出 `Failed to connect to Milvus` 异常。
-    - **解决方案**：检查 Docker Compose 是否已完全启动（`docker ps` 确保 Milvus 状态为 `healthy` 或 `running`）；若部署在远程，请确保 `application.properties` 中的 `host` 地址可达。
+    - **解决方案**：检查 Docker Compose 是否已完全启动（`docker ps` 确保 Milvus 状态为 `healthy` 或 `running`）；`standalone` 容器启动较慢，可用 `docker-compose logs standalone` 确认 `19530` 已开始监听；若 Milvus 部署在远程，请确保 `application.properties` 中的 `spring.ai.vectorstore.milvus.client.host` 地址可达。
 
 3. **Ollama 模型拉取失败或超时**
     - **问题表现**：对话或生成 Embedding 时后端日志提示模型调用超时或 404。

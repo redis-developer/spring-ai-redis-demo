@@ -20,7 +20,7 @@
                            │
                     ┌──────▼──────┐
                     │ Spring Boot │
-                    │   3.2.3     │
+                    │   4.2.0     │
                     └──────┬──────┘
                            │
     ┌──────────────────────┼──────────────────────┐
@@ -43,7 +43,7 @@
 | 组件 | 技术 | 说明
 
 | 后端框架
-| Spring Boot 3.2.3 + Spring AI 1.0.0
+| Spring Boot 4.2.0 + Spring AI 2.1.0
 | Java 17+
 
 | LLM 服务
@@ -55,11 +55,11 @@
 | 1024 维向量
 
 | 向量数据库
-| Milvus
-| 高性能向量检索
+| Milvus (SDK 2.6.21)
+| 高性能向量检索；docker-compose.yml 与集成测试均使用 milvusdb/milvus:v2.6.7 单机版
 
 | 混合检索
-| Lucene BM25 + Milvus 向量
+| Lucene 9.11.1 BM25 + Milvus 向量
 | RRF 算法融合
 
 | BM25 持久化
@@ -71,8 +71,16 @@
 | 提升检索相关性
 
 | 前端
-| React 18 + Bootstrap 5
-| 聊天界面
+| React 18.2 + Bootstrap 5.3
+| 聊天界面（React Bootstrap 2.9）
+
+| 构建工具链
+| Maven 3.6.3+ / Node v18.16.0 + npm 9.5.1
+| 后端与前端构建环境
+
+| 测试基础设施
+| JaCoCo 0.8.16 + Testcontainers 1.21.4
+| 覆盖率报告与容器集成测试
 |===
 
 == 前置条件
@@ -84,6 +92,37 @@
 ----
 docker compose up -d
 ----
+
+=== Milvus 单机版
+
+{project-name} 的 `docker-compose.yml` 已内置 Milvus v2.6.7 单机版所需的三个容器，随上面的 docker compose up -d 一并启动；若只需先启向量库：
+
+[source,console]
+----
+docker compose up -d etcd minio standalone
+docker compose logs -f standalone
+----
+
+[cols="1,2,2"]
+|===
+| 服务 | 镜像 | 端口
+
+| etcd
+| quay.io/coreos/etcd:v3.5.5
+| 2379（仅容器网络内访问）
+
+| minio
+| minio/minio:RELEASE.2023-03-20T20-16-18Z
+| 9000 (S3) / 9001 (控制台)
+
+| standalone
+| milvusdb/milvus:v2.6.7
+| 19530 (gRPC) / 9091 (metrics)
+|===
+
+standalone 未配置 healthcheck，docker compose ps 只会显示 running；需等到日志中 19530 端口开始监听后再启动应用。
+
+连接地址：后端在宿主机用 127.0.0.1，在同一 compose 网络内用服务名 standalone（spring 服务已通过 SPRING_AI_VECTORSTORE_MILVUS_CLIENT_HOST 覆盖）；端口在 RagConfiguration 中固定为 19530。镜像拉取（含国内镜像源 retag）、数据卷与安全提示详见 link:DOCKER-README.md[Docker 部署指南]。
 
 === Ollama
 
@@ -128,6 +167,9 @@ spring.ai.ollama.base-url=http://127.0.0.1:11434
 spring.ai.ollama.embedding.options.model=bge-m3:latest
 # Chat 模型
 spring.ai.ollama.chat.options.model=qwen2.5:0.5b
+# Embedding 调用超时（Spring Boot 4.2 起 OllamaApi 默认请求工厂为 Reactor Netty，隐含约 10s 读超时）
+spring.ai.ollama.embedding.connect-timeout=10s
+spring.ai.ollama.embedding.read-timeout=300s
 
 # --- OpenAI 配置 (当 chat.provider=openai 时生效) ---
 # 推荐使用环境变量 SILICONFLOW_KEY 设置 API Key
@@ -136,6 +178,7 @@ spring.ai.openai.base-url=https://api.siliconflow.cn
 spring.ai.openai.chat.model=Qwen/Qwen3-8B
 
 # --- Milvus 向量库配置 ---
+# 本机运行后端填 127.0.0.1；compose 网络内填 standalone；端口在 RagConfiguration 中固定为 19530
 spring.ai.vectorstore.milvus.client.host=10.1.1.234
 spring.ai.vectorstore.milvus.client.port=19530
 spring.ai.vectorstore.milvus.collection-name=paper_collection_vpdf

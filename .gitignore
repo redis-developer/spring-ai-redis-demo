@@ -205,6 +205,9 @@ node_modules
 .vector_db
 */cache
 
+# Milvus 单机版数据卷（docker-compose.yml 中 etcd / minio / milvus 的 bind mount）
+/volumes/
+
 # deepeval tests
 secrets
 
